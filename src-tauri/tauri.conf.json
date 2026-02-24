@@ -14,8 +14,10 @@
       {
         "title": "AutoInput",
         "width": 480,
-        "height": 640,
-        "resizable": false
+        "height": 960,
+        "resizable": true,
+        "minWidth": 480,
+        "minHeight": 640
       }
     ],
     "security": {
