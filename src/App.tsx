@@ -176,12 +176,39 @@ function App() {
   }, []);
 
   const toggleAction = useCallback(async () => {
-    if (runningRef.current) {
-      await stopAction();
+    // Check backend state directly to avoid any stale ref issues
+    const backendRunning = await invoke<boolean>("is_running");
+    if (backendRunning) {
+      await invoke("stop_action");
+      setRunning(false);
     } else {
-      await startAction();
+      setError(null);
+      try {
+        const s = settingsRef.current;
+        await invoke("start_action", {
+          settings: {
+            hours: s.hours,
+            minutes: s.minutes,
+            seconds: s.seconds,
+            milliseconds: s.milliseconds,
+            mouseButton: s.mouseButton,
+            clickType: s.clickType,
+            repeatMode: s.repeatMode,
+            repeatCount: s.repeatCount,
+            locationMode: s.locationMode,
+            fixedX: s.fixedX,
+            fixedY: s.fixedY,
+            actionType: s.actionType,
+            holdKey: s.holdKey,
+            keyMode: s.keyMode,
+          },
+        });
+        setRunning(true);
+      } catch (err) {
+        setError(String(err));
+      }
     }
-  }, [startAction, stopAction]);
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Listen for backend "action-stopped" event (count mode completion)
@@ -198,6 +225,14 @@ function App() {
   // Global hotkeys — register once, callbacks use refs
   // ---------------------------------------------------------------------------
 
+  // Store action refs so hotkey callbacks always call the latest version
+  const startRef = useRef(startAction);
+  const stopRef = useRef(stopAction);
+  const toggleRef = useRef(toggleAction);
+  useEffect(() => { startRef.current = startAction; }, [startAction]);
+  useEffect(() => { stopRef.current = stopAction; }, [stopAction]);
+  useEffect(() => { toggleRef.current = toggleAction; }, [toggleAction]);
+
   useEffect(() => {
     let disposed = false;
 
@@ -205,9 +240,9 @@ function App() {
 
     (async () => {
       try {
-        await register(hk.start, () => { if (!disposed) startAction(); });
-        await register(hk.stop, () => { if (!disposed) stopAction(); });
-        await register(hk.toggle, () => { if (!disposed) toggleAction(); });
+        await register(hk.start, () => { if (!disposed) startRef.current(); });
+        await register(hk.stop, () => { if (!disposed) stopRef.current(); });
+        await register(hk.toggle, () => { if (!disposed) toggleRef.current(); });
       } catch (err) {
         console.warn("Failed to register hotkeys:", err);
       }
