@@ -1,0 +1,23 @@
+import type { Settings } from "@/types/settings";
+
+export const DEFAULT_SETTINGS: Settings = {
+  activeMode: "click",
+  hotkeyLayout: "shared",
+  hours: 0,
+  minutes: 0,
+  seconds: 0,
+  milliseconds: 20,
+  repeatMode: "infinite",
+  repeatCount: 10,
+  alwaysOnTop: false,
+  hotkeys: { start: "F6", stop: "F7", toggle: "F8" },
+  clickHotkeys: { start: "F6", stop: "F7", toggle: "F8" },
+  keyHoldHotkeys: { start: "F9", stop: "F10", toggle: "F11" },
+  mouseButton: "left",
+  clickType: "single",
+  locationMode: "current",
+  fixedX: 0,
+  fixedY: 0,
+  holdKey: "e",
+  keyMode: "hold",
+};
