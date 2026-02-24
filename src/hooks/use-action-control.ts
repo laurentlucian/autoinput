@@ -140,6 +140,8 @@ export function useActionControl(settings: Settings) {
     [toggleMode, settingsRef],
   );
 
+  const clearError = useCallback(() => setError(null), []);
+
   return {
     running,
     runningMode,
@@ -150,5 +152,6 @@ export function useActionControl(settings: Settings) {
     startAction,
     stopAction,
     toggleAction,
+    clearError,
   } as const;
 }

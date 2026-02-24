@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { Pin, PinOff, X, Mouse, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -32,9 +33,18 @@ const INTERVAL_FIELDS = [
 // ---------------------------------------------------------------------------
 
 const labelClass = "text-[11px] uppercase tracking-wider text-muted-foreground font-medium";
-const sectionClass = "border border-border p-3 space-y-2";
+const sublabelClass = "text-[10px] text-muted-foreground leading-tight";
+const sectionClass = "border border-border p-3 space-y-2 transition-all duration-150";
 const numberInputClass =
   "text-center h-8 text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function totalIntervalMs(s: Settings): number {
+  return s.milliseconds + s.seconds * 1000 + s.minutes * 60_000 + s.hours * 3_600_000;
+}
 
 // ---------------------------------------------------------------------------
 // App
@@ -57,6 +67,7 @@ function App() {
   const isClickActive = settings.activeMode === "click";
   const isClickRunning = running && runningMode === "click";
   const isKeyHoldRunning = running && runningMode === "hold-key";
+  const intervalIsZero = totalIntervalMs(settings) === 0;
 
   return (
     <main className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -65,34 +76,66 @@ function App() {
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold tracking-tight">AUTOINPUT</h1>
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={settings.alwaysOnTop}
-                onChange={(e) => set("alwaysOnTop", e.target.checked)}
-                className="accent-primary"
-              />
-              PIN
-            </label>
-            <span className={`text-xs font-mono ${running ? "text-destructive" : "text-muted-foreground"}`}>
-              {running ? `RUNNING \u00b7 ${runningMode === "click" ? "CLICK" : "KEY"}` : "IDLE"}
-            </span>
+            <button
+              type="button"
+              onClick={() => set("alwaysOnTop", !settings.alwaysOnTop)}
+              className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
+              title={settings.alwaysOnTop ? "Unpin window" : "Pin window on top"}
+            >
+              {settings.alwaysOnTop ? <Pin className="size-3" /> : <PinOff className="size-3" />}
+              {settings.alwaysOnTop ? "PINNED" : "PIN"}
+            </button>
           </div>
         </div>
 
-        {/* Error banner — ternary, not && (rendering-conditional-render) */}
+        {/* Status banner — prominent when running */}
+        {running ? (
+          <div className="bg-destructive/15 border border-destructive/40 text-destructive text-xs p-2 flex items-center justify-between animate-pulse">
+            <span className="font-medium tracking-wide">
+              RUNNING {runningMode === "click" ? "MOUSE CLICK" : "KEY HOLD"}
+            </span>
+            <button
+              type="button"
+              onClick={() => actions.stopAction()}
+              className="text-[10px] font-medium uppercase hover:underline"
+            >
+              Stop
+            </button>
+          </div>
+        ) : (
+          <div className="border border-border/50 text-muted-foreground text-xs p-2">
+            <span className="tracking-wide">IDLE</span>
+          </div>
+        )}
+
+        {/* Error banner */}
         {error ? (
-          <div className="bg-destructive/10 border border-destructive/30 text-destructive text-xs p-2">
-            {error}
+          <div className="bg-destructive/10 border border-destructive/30 text-destructive text-xs p-2 flex items-center justify-between gap-2">
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={() => actions.clearError()}
+              className="shrink-0 hover:text-destructive/70 transition-colors"
+              aria-label="Dismiss error"
+            >
+              <X className="size-3.5" />
+            </button>
           </div>
         ) : null}
 
         {/* Hotkey Layout */}
         <section className={sectionClass}>
-          <p className={labelClass}>Hotkey Layout</p>
-          <div className="flex gap-2">
+          <div>
+            <p className={labelClass}>Hotkey Layout</p>
+            <p className={sublabelClass}>
+              {isShared
+                ? "One set of hotkeys controls whichever mode is active"
+                : "Each mode has its own hotkeys and can run independently"}
+            </p>
+          </div>
+          <div className="flex gap-1">
             <Button
-              variant={isShared ? "default" : "outline"}
+              variant={isShared ? "secondary" : "ghost"}
               size="sm"
               className="flex-1"
               disabled={running}
@@ -101,7 +144,7 @@ function App() {
               Shared
             </Button>
             <Button
-              variant={isShared ? "outline" : "default"}
+              variant={isShared ? "ghost" : "secondary"}
               size="sm"
               className="flex-1"
               disabled={running}
@@ -115,10 +158,15 @@ function App() {
         {/* Active Mode Toggle — only in shared mode */}
         {isShared ? (
           <section className={sectionClass}>
-            <p className={labelClass}>Active Mode</p>
-            <div className="flex gap-2">
+            <div>
+              <p className={labelClass}>Active Mode</p>
+              <p className={sublabelClass}>
+                Choose which action the shared hotkeys control
+              </p>
+            </div>
+            <div className="flex gap-1">
               <Button
-                variant={isClickActive ? "default" : "outline"}
+                variant={isClickActive ? "secondary" : "ghost"}
                 size="sm"
                 className="flex-1"
                 onClick={() => set("activeMode", "click")}
@@ -126,7 +174,7 @@ function App() {
                 Mouse Click
               </Button>
               <Button
-                variant={isClickActive ? "outline" : "default"}
+                variant={isClickActive ? "ghost" : "secondary"}
                 size="sm"
                 className="flex-1"
                 onClick={() => set("activeMode", "hold-key")}
@@ -139,7 +187,12 @@ function App() {
 
         {/* Interval */}
         <section className={sectionClass}>
-          <p className={labelClass}>Interval</p>
+          <div className="flex items-center justify-between">
+            <p className={labelClass}>Interval</p>
+            {intervalIsZero && !running ? (
+              <span className="text-[10px] text-destructive">Must be greater than 0</span>
+            ) : null}
+          </div>
           <div className="grid grid-cols-4 gap-2">
             {INTERVAL_FIELDS.map((item) => (
               <div key={item.label} className="space-y-1">
@@ -181,9 +234,9 @@ function App() {
         <section className={sectionClass}>
           <p className={labelClass}>Repeat</p>
           <div className="flex gap-2 items-end">
-            <div className="flex gap-2 flex-1">
+            <div className="flex gap-1 flex-1">
               <Button
-                variant={settings.repeatMode === "infinite" ? "default" : "outline"}
+                variant={settings.repeatMode === "infinite" ? "secondary" : "ghost"}
                 size="sm"
                 className="flex-1"
                 disabled={running}
@@ -192,7 +245,7 @@ function App() {
                 Infinite
               </Button>
               <Button
-                variant={settings.repeatMode === "count" ? "default" : "outline"}
+                variant={settings.repeatMode === "count" ? "secondary" : "ghost"}
                 size="sm"
                 className="flex-1"
                 disabled={running}
@@ -227,50 +280,89 @@ function App() {
 
         {/* Action buttons */}
         {isShared ? (
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            <Button onClick={() => actions.startAction()} disabled={running} size="sm">
+          <div className="grid grid-cols-3 gap-2 pt-2">
+            <Button
+              onClick={() => actions.startAction()}
+              disabled={running || intervalIsZero}
+              variant="success"
+              size="lg"
+            >
               START{settings.hotkeys.start ? ` (${settings.hotkeys.start})` : ""}
             </Button>
-            <Button onClick={() => actions.stopAction()} disabled={!running} variant="destructive" size="sm">
+            <Button onClick={() => actions.stopAction()} disabled={!running} variant="destructive" size="lg">
               STOP{settings.hotkeys.stop ? ` (${settings.hotkeys.stop})` : ""}
             </Button>
-            <Button onClick={() => actions.toggleAction()} variant="outline" size="sm">
+            <Button onClick={() => actions.toggleAction()} disabled={intervalIsZero} variant="outline" size="lg">
               TOGGLE{settings.hotkeys.toggle ? ` (${settings.hotkeys.toggle})` : ""}
             </Button>
           </div>
         ) : (
-          <div className="space-y-2 pt-1">
-            <div className="grid grid-cols-3 gap-2">
-              <Button onClick={() => actions.startMode("click")} disabled={isClickRunning} size="sm">
-                CLICK{settings.clickHotkeys.start ? ` (${settings.clickHotkeys.start})` : ""}
-              </Button>
-              <Button
-                onClick={() => { if (isClickRunning) actions.stopCurrent(); }}
-                disabled={!isClickRunning}
-                variant="destructive"
-                size="sm"
-              >
-                STOP{settings.clickHotkeys.stop ? ` (${settings.clickHotkeys.stop})` : ""}
-              </Button>
-              <Button onClick={() => actions.toggleMode("click")} variant="outline" size="sm">
-                TOGGLE{settings.clickHotkeys.toggle ? ` (${settings.clickHotkeys.toggle})` : ""}
-              </Button>
+          <div className="space-y-2 pt-2">
+            {/* Click controls */}
+            <div className="space-y-1">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <Mouse className="size-3" />
+                Mouse Click
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  onClick={() => actions.startMode("click")}
+                  disabled={isClickRunning || intervalIsZero}
+                  variant="success"
+                  size="default"
+                >
+                  START{settings.clickHotkeys.start ? ` (${settings.clickHotkeys.start})` : ""}
+                </Button>
+                <Button
+                  onClick={() => { if (isClickRunning) actions.stopCurrent(); }}
+                  disabled={!isClickRunning}
+                  variant="destructive"
+                  size="default"
+                >
+                  STOP{settings.clickHotkeys.stop ? ` (${settings.clickHotkeys.stop})` : ""}
+                </Button>
+                <Button
+                  onClick={() => actions.toggleMode("click")}
+                  disabled={intervalIsZero}
+                  variant="outline"
+                  size="default"
+                >
+                  TOGGLE{settings.clickHotkeys.toggle ? ` (${settings.clickHotkeys.toggle})` : ""}
+                </Button>
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <Button onClick={() => actions.startMode("hold-key")} disabled={isKeyHoldRunning} size="sm">
-                KEY{settings.keyHoldHotkeys.start ? ` (${settings.keyHoldHotkeys.start})` : ""}
-              </Button>
-              <Button
-                onClick={() => { if (isKeyHoldRunning) actions.stopCurrent(); }}
-                disabled={!isKeyHoldRunning}
-                variant="destructive"
-                size="sm"
-              >
-                STOP{settings.keyHoldHotkeys.stop ? ` (${settings.keyHoldHotkeys.stop})` : ""}
-              </Button>
-              <Button onClick={() => actions.toggleMode("hold-key")} variant="outline" size="sm">
-                TOGGLE{settings.keyHoldHotkeys.toggle ? ` (${settings.keyHoldHotkeys.toggle})` : ""}
-              </Button>
+            {/* Key hold controls */}
+            <div className="space-y-1">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <Keyboard className="size-3" />
+                Key Hold
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  onClick={() => actions.startMode("hold-key")}
+                  disabled={isKeyHoldRunning || intervalIsZero}
+                  variant="success"
+                  size="default"
+                >
+                  START{settings.keyHoldHotkeys.start ? ` (${settings.keyHoldHotkeys.start})` : ""}
+                </Button>
+                <Button
+                  onClick={() => { if (isKeyHoldRunning) actions.stopCurrent(); }}
+                  disabled={!isKeyHoldRunning}
+                  variant="destructive"
+                  size="default"
+                >
+                  STOP{settings.keyHoldHotkeys.stop ? ` (${settings.keyHoldHotkeys.stop})` : ""}
+                </Button>
+                <Button
+                  onClick={() => actions.toggleMode("hold-key")}
+                  disabled={intervalIsZero}
+                  variant="outline"
+                  size="default"
+                >
+                  TOGGLE{settings.keyHoldHotkeys.toggle ? ` (${settings.keyHoldHotkeys.toggle})` : ""}
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -298,18 +390,22 @@ function MouseClickSection({
   isClickActive: boolean;
   isClickRunning: boolean;
 }) {
+  const isActive = (isShared && isClickActive) || !isShared;
   const borderClass = isClickRunning
-    ? "border-destructive/50"
-    : (isShared && isClickActive) || !isShared
-      ? "border-primary/50"
-      : "opacity-60";
+    ? "border-destructive/50 bg-destructive/[0.03]"
+    : isActive
+      ? "border-primary/30"
+      : "opacity-40 pointer-events-none";
 
   return (
     <section className={`${sectionClass} ${borderClass}`}>
       <div className="flex items-center justify-between">
-        <p className={labelClass}>Mouse Click</p>
+        <p className={`${labelClass} flex items-center gap-1.5`}>
+          <Mouse className="size-3.5" />
+          Mouse Click
+        </p>
         {isClickRunning ? (
-          <span className="text-[10px] uppercase tracking-wider text-destructive font-medium">Running</span>
+          <span className="text-[10px] uppercase tracking-wider text-destructive font-medium animate-pulse">Running</span>
         ) : !isClickRunning && isShared && isClickActive ? (
           <span className="text-[10px] uppercase tracking-wider text-primary font-medium">Active</span>
         ) : null}
@@ -353,10 +449,10 @@ function MouseClickSection({
       {/* Cursor Position */}
       <div className="space-y-2 pt-1">
         <p className="text-[10px] text-muted-foreground">Cursor Position</p>
-        <div className="flex gap-2 items-end">
-          <div className="flex gap-2 flex-1">
+          <div className="flex gap-2 items-end">
+          <div className="flex gap-1 flex-1">
             <Button
-              variant={settings.locationMode === "current" ? "default" : "outline"}
+              variant={settings.locationMode === "current" ? "secondary" : "ghost"}
               size="sm"
               className="flex-1"
               disabled={disabled}
@@ -365,7 +461,7 @@ function MouseClickSection({
               Current
             </Button>
             <Button
-              variant={settings.locationMode === "fixed" ? "default" : "outline"}
+              variant={settings.locationMode === "fixed" ? "secondary" : "ghost"}
               size="sm"
               className="flex-1"
               disabled={disabled}
@@ -429,18 +525,22 @@ function KeyHoldSection({
   isClickActive: boolean;
   isKeyHoldRunning: boolean;
 }) {
+  const isActive = (isShared && !isClickActive) || !isShared;
   const borderClass = isKeyHoldRunning
-    ? "border-destructive/50"
-    : (isShared && !isClickActive) || !isShared
-      ? "border-primary/50"
-      : "opacity-60";
+    ? "border-destructive/50 bg-destructive/[0.03]"
+    : isActive
+      ? "border-primary/30"
+      : "opacity-40 pointer-events-none";
 
   return (
     <section className={`${sectionClass} ${borderClass}`}>
       <div className="flex items-center justify-between">
-        <p className={labelClass}>Key Hold</p>
+        <p className={`${labelClass} flex items-center gap-1.5`}>
+          <Keyboard className="size-3.5" />
+          Key Hold
+        </p>
         {isKeyHoldRunning ? (
-          <span className="text-[10px] uppercase tracking-wider text-destructive font-medium">Running</span>
+          <span className="text-[10px] uppercase tracking-wider text-destructive font-medium animate-pulse">Running</span>
         ) : !isKeyHoldRunning && isShared && !isClickActive ? (
           <span className="text-[10px] uppercase tracking-wider text-primary font-medium">Active</span>
         ) : null}
