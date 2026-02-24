@@ -21,6 +21,7 @@ export function HotkeyGrid({ value, onChange, label, disabled }: HotkeyGridProps
             <KeyCapture
               value={value[op]}
               disabled={disabled}
+              clearable
               onChange={(v) => onChange({ ...value, [op]: v })}
             />
           </div>

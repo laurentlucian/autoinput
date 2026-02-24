@@ -229,20 +229,20 @@ function App() {
         {isShared ? (
           <div className="grid grid-cols-3 gap-2 pt-1">
             <Button onClick={() => actions.startAction()} disabled={running} size="sm">
-              START ({settings.hotkeys.start})
+              START{settings.hotkeys.start ? ` (${settings.hotkeys.start})` : ""}
             </Button>
             <Button onClick={() => actions.stopAction()} disabled={!running} variant="destructive" size="sm">
-              STOP ({settings.hotkeys.stop})
+              STOP{settings.hotkeys.stop ? ` (${settings.hotkeys.stop})` : ""}
             </Button>
             <Button onClick={() => actions.toggleAction()} variant="outline" size="sm">
-              TOGGLE ({settings.hotkeys.toggle})
+              TOGGLE{settings.hotkeys.toggle ? ` (${settings.hotkeys.toggle})` : ""}
             </Button>
           </div>
         ) : (
           <div className="space-y-2 pt-1">
             <div className="grid grid-cols-3 gap-2">
               <Button onClick={() => actions.startMode("click")} disabled={isClickRunning} size="sm">
-                CLICK ({settings.clickHotkeys.start})
+                CLICK{settings.clickHotkeys.start ? ` (${settings.clickHotkeys.start})` : ""}
               </Button>
               <Button
                 onClick={() => { if (isClickRunning) actions.stopCurrent(); }}
@@ -250,15 +250,15 @@ function App() {
                 variant="destructive"
                 size="sm"
               >
-                STOP ({settings.clickHotkeys.stop})
+                STOP{settings.clickHotkeys.stop ? ` (${settings.clickHotkeys.stop})` : ""}
               </Button>
               <Button onClick={() => actions.toggleMode("click")} variant="outline" size="sm">
-                TOGGLE ({settings.clickHotkeys.toggle})
+                TOGGLE{settings.clickHotkeys.toggle ? ` (${settings.clickHotkeys.toggle})` : ""}
               </Button>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <Button onClick={() => actions.startMode("hold-key")} disabled={isKeyHoldRunning} size="sm">
-                KEY ({settings.keyHoldHotkeys.start})
+                KEY{settings.keyHoldHotkeys.start ? ` (${settings.keyHoldHotkeys.start})` : ""}
               </Button>
               <Button
                 onClick={() => { if (isKeyHoldRunning) actions.stopCurrent(); }}
@@ -266,10 +266,10 @@ function App() {
                 variant="destructive"
                 size="sm"
               >
-                STOP ({settings.keyHoldHotkeys.stop})
+                STOP{settings.keyHoldHotkeys.stop ? ` (${settings.keyHoldHotkeys.stop})` : ""}
               </Button>
               <Button onClick={() => actions.toggleMode("hold-key")} variant="outline" size="sm">
-                TOGGLE ({settings.keyHoldHotkeys.toggle})
+                TOGGLE{settings.keyHoldHotkeys.toggle ? ` (${settings.keyHoldHotkeys.toggle})` : ""}
               </Button>
             </div>
           </div>
@@ -451,7 +451,7 @@ function KeyHoldSection({
           <KeyCapture
             value={settings.holdKey}
             disabled={disabled}
-            onChange={(v) => set("holdKey", v)}
+            onChange={(v) => { if (v) set("holdKey", v); }}
           />
         </div>
         <div className="space-y-1">

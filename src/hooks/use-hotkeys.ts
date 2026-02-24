@@ -30,7 +30,8 @@ export function useHotkeys(settings: Settings, actions: HotkeyActions) {
     let disposed = false;
     const keys: string[] = [];
 
-    const safeRegister = async (key: string, cb: () => void) => {
+    const safeRegister = async (key: string | null, cb: () => void) => {
+      if (!key) return; // skip disabled hotkeys
       keys.push(key);
       await register(key, () => {
         if (!disposed) cb();

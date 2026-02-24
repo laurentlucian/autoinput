@@ -7,9 +7,9 @@ export type KeyMode = "hold" | "repeat";
 export type HotkeyLayout = "shared" | "independent";
 
 export interface HotkeySet {
-  start: string;
-  stop: string;
-  toggle: string;
+  start: string | null;
+  stop: string | null;
+  toggle: string | null;
 }
 
 export interface Settings {
