@@ -36,7 +36,8 @@ jobs:
       - name: Type check
         run: bun run tsc --noEmit
 
-      - name: Build & Release (tag only)
+      # Tag push → public release (draft, you publish manually)
+      - name: Build & Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: tauri-apps/tauri-action@v0
         env:
@@ -48,16 +49,22 @@ jobs:
           releaseDraft: true
           prerelease: false
 
-      - name: Build (no release)
-        if: "!startsWith(github.ref, 'refs/tags/v')"
+      # Push to main → public pre-release (anyone can download)
+      - name: Build & Pre-release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload artifact
-        if: "!startsWith(github.ref, 'refs/tags/v')"
-        uses: actions/upload-artifact@v4
         with:
-          name: autoinput-windows
-          path: src-tauri/target/release/bundle/
-          retention-days: 7
+          tagName: latest
+          releaseName: "AutoInput (latest build)"
+          releaseBody: "Automated build from the latest commit on main. May be unstable."
+          releaseDraft: false
+          prerelease: true
+
+      # PRs → build only, no release
+      - name: Build (PR check)
+        if: github.event_name == 'pull_request'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
