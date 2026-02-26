@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mouseButton: "left",
   mouseMode: "click",
   clickType: "single",
+  dragSpeed: 5,
   locationMode: "current",
   fixedX: 0,
   fixedY: 0,

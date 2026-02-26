@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Pin, PinOff, X, Mouse, Keyboard } from "lucide-react";
+import { VirtualJoystick } from "@/components/VirtualJoystick";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -68,6 +69,13 @@ function App() {
   const isClickRunning = running && runningMode === "click";
   const isKeyHoldRunning = running && runningMode === "hold-key";
   const intervalIsZero = totalIntervalMs(settings) === 0;
+
+  // Interval is only needed for click-based modes (mouse click, key repeat)
+  const mouseNeedsInterval = settings.mouseMode === "click";
+  const keyNeedsInterval = settings.keyMode === "repeat";
+  const needsInterval = isShared
+    ? (isClickActive ? mouseNeedsInterval : keyNeedsInterval)
+    : mouseNeedsInterval || keyNeedsInterval;
 
   return (
     <main className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -185,30 +193,32 @@ function App() {
           </section>
         ) : null}
 
-        {/* Interval */}
-        <section className={sectionClass}>
-          <div className="flex items-center justify-between">
-            <p className={labelClass}>Interval</p>
-            {intervalIsZero && !running ? (
-              <span className="text-[10px] text-destructive">Must be greater than 0</span>
-            ) : null}
-          </div>
-          <div className="grid grid-cols-4 gap-2">
-            {INTERVAL_FIELDS.map((item) => (
-              <div key={item.label} className="space-y-1">
-                <p className="text-[10px] text-muted-foreground text-center">{item.label}</p>
-                <Input
-                  type="number"
-                  min="0"
-                  value={settings[item.key]}
-                  disabled={running}
-                  onChange={(e) => set(item.key, Math.max(0, parseInt(e.target.value) || 0))}
-                  className={numberInputClass}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* Interval — hidden when active mode doesn't need it */}
+        {needsInterval ? (
+          <section className={sectionClass}>
+            <div className="flex items-center justify-between">
+              <p className={labelClass}>Interval</p>
+              {intervalIsZero && !running ? (
+                <span className="text-[10px] text-destructive">Must be greater than 0</span>
+              ) : null}
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {INTERVAL_FIELDS.map((item) => (
+                <div key={item.label} className="space-y-1">
+                  <p className="text-[10px] text-muted-foreground text-center">{item.label}</p>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={settings[item.key]}
+                    disabled={running}
+                    onChange={(e) => set(item.key, Math.max(0, parseInt(e.target.value) || 0))}
+                    className={numberInputClass}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {/* Mouse Click */}
         <MouseClickSection
@@ -283,7 +293,7 @@ function App() {
           <div className="grid grid-cols-3 gap-2 pt-2">
             <Button
               onClick={() => actions.startAction()}
-              disabled={running || intervalIsZero}
+              disabled={running || (needsInterval && intervalIsZero)}
               variant="success"
               size="lg"
             >
@@ -292,7 +302,7 @@ function App() {
             <Button onClick={() => actions.stopAction()} disabled={!running} variant="destructive" size="lg">
               STOP{settings.hotkeys.stop ? ` (${settings.hotkeys.stop})` : ""}
             </Button>
-            <Button onClick={() => actions.toggleAction()} disabled={intervalIsZero} variant="outline" size="lg">
+            <Button onClick={() => actions.toggleAction()} disabled={needsInterval && intervalIsZero} variant="outline" size="lg">
               TOGGLE{settings.hotkeys.toggle ? ` (${settings.hotkeys.toggle})` : ""}
             </Button>
           </div>
@@ -307,7 +317,7 @@ function App() {
               <div className="grid grid-cols-3 gap-2">
                 <Button
                   onClick={() => actions.startMode("click")}
-                  disabled={isClickRunning || intervalIsZero}
+                  disabled={isClickRunning || (mouseNeedsInterval && intervalIsZero)}
                   variant="success"
                   size="default"
                 >
@@ -323,7 +333,7 @@ function App() {
                 </Button>
                 <Button
                   onClick={() => actions.toggleMode("click")}
-                  disabled={intervalIsZero}
+                  disabled={mouseNeedsInterval && intervalIsZero}
                   variant="outline"
                   size="default"
                 >
@@ -340,7 +350,7 @@ function App() {
               <div className="grid grid-cols-3 gap-2">
                 <Button
                   onClick={() => actions.startMode("hold-key")}
-                  disabled={isKeyHoldRunning || intervalIsZero}
+                  disabled={isKeyHoldRunning || (keyNeedsInterval && intervalIsZero)}
                   variant="success"
                   size="default"
                 >
@@ -356,7 +366,7 @@ function App() {
                 </Button>
                 <Button
                   onClick={() => actions.toggleMode("hold-key")}
-                  disabled={intervalIsZero}
+                  disabled={keyNeedsInterval && intervalIsZero}
                   variant="outline"
                   size="default"
                 >
@@ -396,6 +406,15 @@ function MouseClickSection({
     : isActive
       ? "border-primary/30"
       : "opacity-40 pointer-events-none";
+
+  // Throttled drag vector update — send to backend at most every 16ms
+  const lastSent = useRef(0);
+  const handleJoystick = useCallback((dx: number, dy: number) => {
+    const now = Date.now();
+    if (now - lastSent.current < 16) return;
+    lastSent.current = now;
+    invoke("update_drag_vector", { dx, dy }).catch(() => {});
+  }, []);
 
   return (
     <section className={`${sectionClass} ${borderClass}`}>
@@ -523,6 +542,35 @@ function MouseClickSection({
           ) : null}
         </div>
       </div>
+
+      {/* Drag controls — only in hold mode */}
+      {settings.mouseMode === "hold" ? (
+        <div className="flex items-center gap-4 pt-1">
+          <VirtualJoystick
+            onChange={handleJoystick}
+            speed={settings.dragSpeed}
+            disabled={!isClickRunning}
+          />
+          <div className="flex-1 space-y-1">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] text-muted-foreground">Drag Speed</p>
+              <p className="text-[10px] text-muted-foreground tabular-nums">{settings.dragSpeed}</p>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="20"
+              value={settings.dragSpeed}
+              disabled={disabled}
+              onChange={(e) => set("dragSpeed", parseInt(e.target.value))}
+              className="w-full h-1.5 accent-primary cursor-pointer"
+            />
+            <p className="text-[9px] text-muted-foreground/60">
+              Use joystick while holding to drag the cursor
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {/* Independent hotkeys for click */}
       {!isShared ? (

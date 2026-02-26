@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
@@ -88,6 +88,21 @@ mod win_input {
             },
         ];
         send(&inputs);
+    }
+
+    pub fn move_mouse_rel(dx: i32, dy: i32) {
+        let input = INPUT {
+            r#type: INPUT_MOUSE,
+            Anonymous: INPUT_0 {
+                mi: MOUSEINPUT {
+                    dx,
+                    dy,
+                    dwFlags: MOUSEEVENTF_MOVE,
+                    ..Default::default()
+                },
+            },
+        };
+        send(&[input]);
     }
 
     pub fn mouse_down(button: &str) {
@@ -214,6 +229,7 @@ mod win_input {
     #[derive(Clone, Copy)]
     pub struct VIRTUAL_KEY(pub u16);
     pub fn move_mouse_abs(_x: i32, _y: i32) {}
+    pub fn move_mouse_rel(_dx: i32, _dy: i32) {}
     pub fn mouse_click(_button: &str) {}
     pub fn mouse_down(_button: &str) {}
     pub fn mouse_up(_button: &str) {}
@@ -249,6 +265,7 @@ pub struct AutoInputSettings {
 
     pub action_type: String,
     pub mouse_mode: String,
+    pub drag_speed: i32,
 
     pub hold_key: String,
     pub key_mode: String,
@@ -270,6 +287,7 @@ impl Default for AutoInputSettings {
             fixed_y: 0,
             action_type: "click".into(),
             mouse_mode: "click".into(),
+            drag_speed: 5,
             hold_key: "e".into(),
             key_mode: "hold".into(),
         }
@@ -302,6 +320,8 @@ struct InputState {
     stop: Option<Arc<AtomicBool>>,
     done: Arc<AtomicBool>,
     handle: Option<JoinHandle<()>>,
+    drag_dx: Arc<AtomicI32>,
+    drag_dy: Arc<AtomicI32>,
 }
 
 impl Default for InputState {
@@ -310,6 +330,8 @@ impl Default for InputState {
             stop: None,
             done: Arc::new(AtomicBool::new(true)),
             handle: None,
+            drag_dx: Arc::new(AtomicI32::new(0)),
+            drag_dy: Arc::new(AtomicI32::new(0)),
         }
     }
 }
@@ -351,7 +373,10 @@ fn start_action(
     }
 
     let interval = calc_interval_ms(&settings);
-    if interval == 0 {
+    // Hold modes don't use interval — only validate for click/repeat modes
+    let is_hold_mode = (settings.action_type == "click" && settings.mouse_mode == "hold")
+        || (settings.action_type == "hold-key" && settings.key_mode == "hold");
+    if interval == 0 && !is_hold_mode {
         return Err("Interval must be greater than 0".into());
     }
 
@@ -364,6 +389,12 @@ fn start_action(
 
     let done = Arc::new(AtomicBool::new(false));
     let done_clone = Arc::clone(&done);
+
+    // Reset drag vector on start
+    st.drag_dx.store(0, Ordering::Release);
+    st.drag_dy.store(0, Ordering::Release);
+    let drag_dx = Arc::clone(&st.drag_dx);
+    let drag_dy = Arc::clone(&st.drag_dy);
 
     let app_handle = app.clone();
 
@@ -390,14 +421,19 @@ fn start_action(
             return;
         }
 
-        // Mouse-hold mode: press down, wait for stop, release
+        // Mouse-hold mode: press down, drag with joystick vector, release
         if is_click && is_mouse_hold {
             if settings.location_mode == "fixed" {
                 win_input::move_mouse_abs(settings.fixed_x, settings.fixed_y);
             }
             win_input::mouse_down(&settings.mouse_button);
             while !stop_clone.load(Ordering::Acquire) {
-                thread::sleep(Duration::from_millis(50));
+                let dx = drag_dx.load(Ordering::Relaxed);
+                let dy = drag_dy.load(Ordering::Relaxed);
+                if dx != 0 || dy != 0 {
+                    win_input::move_mouse_rel(dx, dy);
+                }
+                thread::sleep(Duration::from_millis(16));
             }
             win_input::mouse_up(&settings.mouse_button);
             done_clone.store(true, Ordering::Release);
@@ -466,6 +502,13 @@ fn stop_action(state: tauri::State<'_, Mutex<InputState>>) -> Result<(), String>
 fn is_running(state: tauri::State<'_, Mutex<InputState>>) -> bool {
     let st = lock_state(&state);
     st.handle.is_some() && !st.done.load(Ordering::Acquire)
+}
+
+#[tauri::command]
+fn update_drag_vector(state: tauri::State<'_, Mutex<InputState>>, dx: i32, dy: i32) {
+    let st = lock_state(&state);
+    st.drag_dx.store(dx, Ordering::Release);
+    st.drag_dy.store(dy, Ordering::Release);
 }
 
 #[tauri::command]
@@ -546,6 +589,7 @@ pub fn run() {
             start_action,
             stop_action,
             is_running,
+            update_drag_vector,
             set_always_on_top,
         ])
         .run(tauri::generate_context!())

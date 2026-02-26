@@ -31,6 +31,7 @@ export interface Settings {
   mouseButton: MouseButton;
   mouseMode: MouseMode;
   clickType: ClickType;
+  dragSpeed: number;
   locationMode: LocationMode;
   fixedX: number;
   fixedY: number;
