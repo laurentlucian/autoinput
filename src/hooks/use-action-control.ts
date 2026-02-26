@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, createContext, useContext } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { ActionType, Settings } from "@/types/settings";
+import type { InputConfig, ActionType } from "@/types/settings";
 import { useLatest } from "./use-latest";
 
 interface ActionPayload {
@@ -23,139 +23,125 @@ interface ActionPayload {
   keyMode: string;
 }
 
-function buildPayload(s: Settings, mode: ActionType): ActionPayload {
+function buildPayload(config: InputConfig): ActionPayload {
   return {
-    hours: s.hours,
-    minutes: s.minutes,
-    seconds: s.seconds,
-    milliseconds: s.milliseconds,
-    mouseButton: s.mouseButton,
-    clickType: s.clickType,
-    repeatMode: s.repeatMode,
-    repeatCount: s.repeatCount,
-    locationMode: s.locationMode,
-    fixedX: s.fixedX,
-    fixedY: s.fixedY,
-    actionType: mode,
-    mouseMode: s.mouseMode,
-    dragSpeed: s.dragSpeed,
-    holdKey: s.holdKey,
-    keyMode: s.keyMode,
+    hours: config.hours,
+    minutes: config.minutes,
+    seconds: config.seconds,
+    milliseconds: config.milliseconds,
+    mouseButton: config.mouseButton,
+    clickType: config.clickType,
+    repeatMode: config.repeatMode,
+    repeatCount: config.repeatCount,
+    locationMode: config.locationMode,
+    fixedX: config.fixedX,
+    fixedY: config.fixedY,
+    actionType: config.actionType,
+    mouseMode: config.mouseMode,
+    dragSpeed: config.dragSpeed,
+    holdKey: config.holdKey,
+    keyMode: config.keyMode,
   };
 }
 
+export interface ActionControlState {
+  runningId: string | null;
+  error: string | null;
+  startConfig: (config: InputConfig) => Promise<void>;
+  stopCurrent: () => Promise<void>;
+  toggleConfig: (config: InputConfig) => Promise<void>;
+  clearError: () => void;
+}
+
+const ActionControlContext = createContext<ActionControlState | null>(null);
+
 /**
- * Manages the running state and provides start/stop/toggle operations
- * for both click and key-hold action modes.
- *
- * Listens for the backend "action-stopped" event (e.g. when count mode completes).
+ * Provider hook — call once in the root layout.
  */
-export function useActionControl(settings: Settings) {
-  const [running, setRunning] = useState(false);
-  const [runningMode, setRunningMode] = useState<ActionType | null>(null);
+export function useActionControlProvider(): ActionControlState {
+  const [runningId, setRunningId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const settingsRef = useLatest(settings);
-  const runningRef = useLatest(running);
-  const runningModeRef = useLatest(runningMode);
+  const runningIdRef = useLatest(runningId);
   const toggleBusy = useRef(false);
 
-  // Listen for backend "action-stopped" event (count mode completion)
+  // Listen for backend "action-stopped" event
   useEffect(() => {
     const unlisten = listen("action-stopped", () => {
-      setRunning(false);
-      setRunningMode(null);
+      setRunningId(null);
     });
     return () => {
       unlisten.then((fn) => fn());
     };
   }, []);
 
-  const startMode = useCallback(async (mode: ActionType) => {
+  const startConfig = useCallback(async (config: InputConfig) => {
     setError(null);
     try {
-      if (runningRef.current) {
+      if (runningIdRef.current) {
         await invoke("stop_action");
       }
-      await invoke("start_action", {
-        settings: buildPayload(settingsRef.current, mode),
-      });
-      setRunning(true);
-      setRunningMode(mode);
+      await invoke("start_action", { settings: buildPayload(config) });
+      setRunningId(config.id);
     } catch (err) {
       setError(String(err));
     }
-  }, [runningRef, settingsRef]);
+  }, [runningIdRef]);
 
   const stopCurrent = useCallback(async () => {
-    if (!runningRef.current) return;
+    if (!runningIdRef.current) return;
     try {
       await invoke("stop_action");
     } catch (err) {
       setError(String(err));
     }
-    setRunning(false);
-    setRunningMode(null);
-  }, [runningRef]);
+    setRunningId(null);
+  }, [runningIdRef]);
 
-  const toggleMode = useCallback(async (mode: ActionType) => {
+  const toggleConfig = useCallback(async (config: InputConfig) => {
     if (toggleBusy.current) return;
     toggleBusy.current = true;
 
     try {
       const backendRunning = await invoke<boolean>("is_running");
-      const currentMode = runningModeRef.current;
 
-      if (backendRunning && currentMode === mode) {
+      if (backendRunning && runningIdRef.current === config.id) {
         await invoke("stop_action");
-        setRunning(false);
-        setRunningMode(null);
+        setRunningId(null);
       } else {
         if (backendRunning) {
           await invoke("stop_action");
         }
         setError(null);
-        await invoke("start_action", {
-          settings: buildPayload(settingsRef.current, mode),
-        });
-        setRunning(true);
-        setRunningMode(mode);
+        await invoke("start_action", { settings: buildPayload(config) });
+        setRunningId(config.id);
       }
     } catch (err) {
       setError(String(err));
     } finally {
       setTimeout(() => { toggleBusy.current = false; }, 300);
     }
-  }, [runningModeRef, settingsRef]);
-
-  // Shared-mode wrappers that use activeMode from settings
-  const startAction = useCallback(
-    () => startMode(settingsRef.current.activeMode),
-    [startMode, settingsRef],
-  );
-
-  const stopAction = useCallback(
-    () => stopCurrent(),
-    [stopCurrent],
-  );
-
-  const toggleAction = useCallback(
-    () => toggleMode(settingsRef.current.activeMode),
-    [toggleMode, settingsRef],
-  );
+  }, [runningIdRef]);
 
   const clearError = useCallback(() => setError(null), []);
 
   return {
-    running,
-    runningMode,
+    runningId,
     error,
-    startMode,
+    startConfig,
     stopCurrent,
-    toggleMode,
-    startAction,
-    stopAction,
-    toggleAction,
+    toggleConfig,
     clearError,
-  } as const;
+  };
+}
+
+export { ActionControlContext };
+
+/**
+ * Consumer hook — use in any child route.
+ */
+export function useActionControl(): ActionControlState {
+  const ctx = useContext(ActionControlContext);
+  if (!ctx) throw new Error("useActionControl must be used within ActionControlContext.Provider");
+  return ctx;
 }

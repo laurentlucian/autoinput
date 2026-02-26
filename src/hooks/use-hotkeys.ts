@@ -1,56 +1,52 @@
 import { useEffect } from "react";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
-import type { ActionType, Settings } from "@/types/settings";
+import type { InputConfig } from "@/types/settings";
 import { useLatest } from "./use-latest";
 
 interface HotkeyActions {
-  startAction: () => void;
-  stopAction: () => void;
-  toggleAction: () => void;
-  startMode: (mode: ActionType) => void;
+  startConfig: (config: InputConfig) => void;
   stopCurrent: () => void;
-  toggleMode: (mode: ActionType) => void;
+  toggleConfig: (config: InputConfig) => void;
 }
 
 /**
- * Registers global hotkeys based on the current hotkey layout (shared or independent).
- *
- * Uses useLatest refs for action callbacks so the hotkey registration effect
- * only re-runs when the actual hotkey *bindings* change, not when callbacks update.
- *
- * @see advanced-event-handler-refs (Vercel React Best Practices)
+ * Registers global hotkeys for all configs in the list.
+ * Each config has its own start/stop/toggle hotkeys.
  */
-export function useHotkeys(settings: Settings, actions: HotkeyActions) {
+export function useHotkeys(configs: InputConfig[], actions: HotkeyActions) {
   const actionsRef = useLatest(actions);
+  const configsRef = useLatest(configs);
 
-  const isShared = settings.hotkeyLayout === "shared";
-  const { hotkeys: sharedHk, clickHotkeys: clickHk, keyHoldHotkeys: keyHoldHk } = settings;
+  // Build a stable dependency string from all hotkey bindings
+  const hotkeyFingerprint = configs
+    .map((c) => `${c.id}:${c.hotkeys.start}:${c.hotkeys.stop}:${c.hotkeys.toggle}`)
+    .join("|");
 
   useEffect(() => {
     let disposed = false;
     const keys: string[] = [];
 
     const safeRegister = async (key: string | null, cb: () => void) => {
-      if (!key) return; // skip disabled hotkeys
+      if (!key) return;
+      // Avoid registering the same key twice
+      if (keys.includes(key)) return;
       keys.push(key);
-      await register(key, () => {
-        if (!disposed) cb();
-      });
+      try {
+        await register(key, () => {
+          if (!disposed) cb();
+        });
+      } catch {
+        // Key might already be registered by OS or conflicting
+      }
     };
 
     (async () => {
       try {
-        if (isShared) {
-          await safeRegister(sharedHk.start, () => actionsRef.current.startAction());
-          await safeRegister(sharedHk.stop, () => actionsRef.current.stopAction());
-          await safeRegister(sharedHk.toggle, () => actionsRef.current.toggleAction());
-        } else {
-          await safeRegister(clickHk.start, () => actionsRef.current.startMode("click"));
-          await safeRegister(clickHk.stop, () => actionsRef.current.stopCurrent());
-          await safeRegister(clickHk.toggle, () => actionsRef.current.toggleMode("click"));
-          await safeRegister(keyHoldHk.start, () => actionsRef.current.startMode("hold-key"));
-          await safeRegister(keyHoldHk.stop, () => actionsRef.current.stopCurrent());
-          await safeRegister(keyHoldHk.toggle, () => actionsRef.current.toggleMode("hold-key"));
+        for (const config of configsRef.current) {
+          const cfg = config; // capture for closure
+          await safeRegister(cfg.hotkeys.start, () => actionsRef.current.startConfig(cfg));
+          await safeRegister(cfg.hotkeys.stop, () => actionsRef.current.stopCurrent());
+          await safeRegister(cfg.hotkeys.toggle, () => actionsRef.current.toggleConfig(cfg));
         }
       } catch (err) {
         console.warn("Failed to register hotkeys:", err);
@@ -61,11 +57,6 @@ export function useHotkeys(settings: Settings, actions: HotkeyActions) {
       disposed = true;
       keys.forEach((k) => unregister(k).catch(() => {}));
     };
-  }, [
-    isShared,
-    sharedHk.start, sharedHk.stop, sharedHk.toggle,
-    clickHk.start, clickHk.stop, clickHk.toggle,
-    keyHoldHk.start, keyHoldHk.stop, keyHoldHk.toggle,
-    actionsRef,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hotkeyFingerprint, actionsRef, configsRef]);
 }

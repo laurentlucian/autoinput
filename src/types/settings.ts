@@ -5,7 +5,6 @@ export type MouseMode = "click" | "hold";
 export type RepeatMode = "infinite" | "count";
 export type LocationMode = "current" | "fixed";
 export type KeyMode = "hold" | "repeat";
-export type HotkeyLayout = "shared" | "independent";
 
 export interface HotkeySet {
   start: string | null;
@@ -13,10 +12,63 @@ export interface HotkeySet {
   toggle: string | null;
 }
 
-export interface Settings {
+/**
+ * A single input automation configuration.
+ * Users build a list of these, each independently runnable.
+ */
+export interface InputConfig {
+  id: string;
+  name: string;
+  actionType: ActionType;
+
+  // Interval (for click / key-repeat modes)
+  hours: number;
+  minutes: number;
+  seconds: number;
+  milliseconds: number;
+
+  // Repeat
+  repeatMode: RepeatMode;
+  repeatCount: number;
+
+  // Mouse settings
+  mouseButton: MouseButton;
+  mouseMode: MouseMode;
+  clickType: ClickType;
+  dragSpeed: number;
+  locationMode: LocationMode;
+  fixedX: number;
+  fixedY: number;
+
+  // Key settings
+  holdKey: string;
+  keyMode: KeyMode;
+
+  // Per-config hotkeys
+  hotkeys: HotkeySet;
+}
+
+/**
+ * App-level settings (not per-config).
+ */
+export interface AppSettings {
+  alwaysOnTop: boolean;
+}
+
+/**
+ * Full persisted state.
+ */
+export interface AppState {
+  configs: InputConfig[];
+  settings: AppSettings;
+}
+
+// ---- Legacy type kept for migration ----
+export type HotkeyLayout = "shared" | "independent";
+
+export interface LegacySettings {
   activeMode: ActionType;
   hotkeyLayout: HotkeyLayout;
-  // Shared
   hours: number;
   minutes: number;
   seconds: number;
@@ -27,7 +79,6 @@ export interface Settings {
   hotkeys: HotkeySet;
   clickHotkeys: HotkeySet;
   keyHoldHotkeys: HotkeySet;
-  // Mouse settings
   mouseButton: MouseButton;
   mouseMode: MouseMode;
   clickType: ClickType;
@@ -35,7 +86,6 @@ export interface Settings {
   locationMode: LocationMode;
   fixedX: number;
   fixedY: number;
-  // Key Hold settings
   holdKey: string;
   keyMode: KeyMode;
 }

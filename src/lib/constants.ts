@@ -1,18 +1,14 @@
-import type { Settings } from "@/types/settings";
+import type { InputConfig, AppSettings, AppState } from "@/types/settings";
 
-export const DEFAULT_SETTINGS: Settings = {
-  activeMode: "click",
-  hotkeyLayout: "shared",
+export const DEFAULT_CONFIG: Omit<InputConfig, "id"> = {
+  name: "New Setup",
+  actionType: "click",
   hours: 0,
   minutes: 0,
   seconds: 0,
   milliseconds: 20,
   repeatMode: "infinite",
   repeatCount: 10,
-  alwaysOnTop: false,
-  hotkeys: { start: "F6", stop: "F7", toggle: "F8" },
-  clickHotkeys: { start: "F6", stop: "F7", toggle: "F8" },
-  keyHoldHotkeys: { start: "F9", stop: "F10", toggle: "F11" },
   mouseButton: "left",
   mouseMode: "click",
   clickType: "single",
@@ -22,4 +18,14 @@ export const DEFAULT_SETTINGS: Settings = {
   fixedY: 0,
   holdKey: "e",
   keyMode: "hold",
+  hotkeys: { start: "F6", stop: "F7", toggle: "F8" },
+};
+
+export const DEFAULT_APP_SETTINGS: AppSettings = {
+  alwaysOnTop: false,
+};
+
+export const DEFAULT_APP_STATE: AppState = {
+  configs: [],
+  settings: DEFAULT_APP_SETTINGS,
 };

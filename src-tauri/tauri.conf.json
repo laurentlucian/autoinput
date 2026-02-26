@@ -13,11 +13,11 @@
     "windows": [
       {
         "title": "AutoInput",
-        "width": 480,
-        "height": 1040,
+        "width": 900,
+        "height": 700,
         "resizable": true,
-        "minWidth": 480,
-        "minHeight": 640
+        "minWidth": 720,
+        "minHeight": 500
       }
     ],
     "security": {
