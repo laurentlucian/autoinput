@@ -90,6 +90,42 @@ mod win_input {
         send(&inputs);
     }
 
+    pub fn mouse_down(button: &str) {
+        let flag = match button {
+            "right" => MOUSEEVENTF_RIGHTDOWN,
+            "middle" => MOUSEEVENTF_MIDDLEDOWN,
+            _ => MOUSEEVENTF_LEFTDOWN,
+        };
+        let input = INPUT {
+            r#type: INPUT_MOUSE,
+            Anonymous: INPUT_0 {
+                mi: MOUSEINPUT {
+                    dwFlags: flag,
+                    ..Default::default()
+                },
+            },
+        };
+        send(&[input]);
+    }
+
+    pub fn mouse_up(button: &str) {
+        let flag = match button {
+            "right" => MOUSEEVENTF_RIGHTUP,
+            "middle" => MOUSEEVENTF_MIDDLEUP,
+            _ => MOUSEEVENTF_LEFTUP,
+        };
+        let input = INPUT {
+            r#type: INPUT_MOUSE,
+            Anonymous: INPUT_0 {
+                mi: MOUSEINPUT {
+                    dwFlags: flag,
+                    ..Default::default()
+                },
+            },
+        };
+        send(&[input]);
+    }
+
     pub fn resolve_vk(name: &str) -> VIRTUAL_KEY {
         match name.to_lowercase().as_str() {
             "space" | "spacebar" => VK_SPACE,
@@ -179,6 +215,8 @@ mod win_input {
     pub struct VIRTUAL_KEY(pub u16);
     pub fn move_mouse_abs(_x: i32, _y: i32) {}
     pub fn mouse_click(_button: &str) {}
+    pub fn mouse_down(_button: &str) {}
+    pub fn mouse_up(_button: &str) {}
     pub fn resolve_vk(_name: &str) -> VIRTUAL_KEY {
         VIRTUAL_KEY(0)
     }
@@ -210,6 +248,7 @@ pub struct AutoInputSettings {
     pub fixed_y: i32,
 
     pub action_type: String,
+    pub mouse_mode: String,
 
     pub hold_key: String,
     pub key_mode: String,
@@ -230,6 +269,7 @@ impl Default for AutoInputSettings {
             fixed_x: 0,
             fixed_y: 0,
             action_type: "click".into(),
+            mouse_mode: "click".into(),
             hold_key: "e".into(),
             key_mode: "hold".into(),
         }
@@ -330,6 +370,7 @@ fn start_action(
     let handle = thread::spawn(move || {
         let is_click = settings.action_type == "click";
         let is_hold = settings.key_mode == "hold";
+        let is_mouse_hold = settings.mouse_mode == "hold";
         let repeat_count = if settings.repeat_mode == "count" {
             settings.repeat_count
         } else {
@@ -344,6 +385,21 @@ fn start_action(
                 thread::sleep(Duration::from_millis(50));
             }
             win_input::key_up(vk);
+            done_clone.store(true, Ordering::Release);
+            let _ = app_handle.emit("action-stopped", ());
+            return;
+        }
+
+        // Mouse-hold mode: press down, wait for stop, release
+        if is_click && is_mouse_hold {
+            if settings.location_mode == "fixed" {
+                win_input::move_mouse_abs(settings.fixed_x, settings.fixed_y);
+            }
+            win_input::mouse_down(&settings.mouse_button);
+            while !stop_clone.load(Ordering::Acquire) {
+                thread::sleep(Duration::from_millis(50));
+            }
+            win_input::mouse_up(&settings.mouse_button);
             done_clone.store(true, Ordering::Release);
             let _ = app_handle.emit("action-stopped", ());
             return;

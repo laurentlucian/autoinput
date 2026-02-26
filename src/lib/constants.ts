@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS: Settings = {
   clickHotkeys: { start: "F6", stop: "F7", toggle: "F8" },
   keyHoldHotkeys: { start: "F9", stop: "F10", toggle: "F11" },
   mouseButton: "left",
+  mouseMode: "click",
   clickType: "single",
   locationMode: "current",
   fixedX: 0,

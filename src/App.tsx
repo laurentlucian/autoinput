@@ -15,7 +15,7 @@ import { KeyCapture } from "@/components/KeyCapture";
 import { usePersistedSettings } from "@/hooks/use-persisted-settings";
 import { useActionControl } from "@/hooks/use-action-control";
 import { useHotkeys } from "@/hooks/use-hotkeys";
-import type { MouseButton, ClickType, KeyMode, Settings } from "@/types/settings";
+import type { MouseButton, MouseMode, KeyMode, Settings } from "@/types/settings";
 
 // ---------------------------------------------------------------------------
 // Hoisted constants (rendering-hoist-jsx)
@@ -429,22 +429,49 @@ function MouseClickSection({
           </Select>
         </div>
         <div className="space-y-1">
-          <p className="text-[10px] text-muted-foreground">Type</p>
+          <p className="text-[10px] text-muted-foreground">Mode</p>
           <Select
-            value={settings.clickType}
+            value={settings.mouseMode}
             disabled={disabled}
-            onValueChange={(v) => set("clickType", v as ClickType)}
+            onValueChange={(v) => set("mouseMode", v as MouseMode)}
           >
             <SelectTrigger className="h-8 w-full text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="single">Single</SelectItem>
-              <SelectItem value="double">Double</SelectItem>
+              <SelectItem value="click">Click</SelectItem>
+              <SelectItem value="hold">Hold (continuous)</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
+
+      {/* Click Type — only relevant in click mode */}
+      {settings.mouseMode === "click" ? (
+        <div className="space-y-1">
+          <p className="text-[10px] text-muted-foreground">Click Type</p>
+          <div className="flex gap-1">
+            <Button
+              variant={settings.clickType === "single" ? "secondary" : "ghost"}
+              size="sm"
+              className="flex-1"
+              disabled={disabled}
+              onClick={() => set("clickType", "single")}
+            >
+              Single
+            </Button>
+            <Button
+              variant={settings.clickType === "double" ? "secondary" : "ghost"}
+              size="sm"
+              className="flex-1"
+              disabled={disabled}
+              onClick={() => set("clickType", "double")}
+            >
+              Double
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       {/* Cursor Position */}
       <div className="space-y-2 pt-1">

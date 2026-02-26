@@ -1,6 +1,7 @@
 export type ActionType = "click" | "hold-key";
 export type MouseButton = "left" | "right" | "middle";
 export type ClickType = "single" | "double";
+export type MouseMode = "click" | "hold";
 export type RepeatMode = "infinite" | "count";
 export type LocationMode = "current" | "fixed";
 export type KeyMode = "hold" | "repeat";
@@ -26,8 +27,9 @@ export interface Settings {
   hotkeys: HotkeySet;
   clickHotkeys: HotkeySet;
   keyHoldHotkeys: HotkeySet;
-  // Mouse Click settings
+  // Mouse settings
   mouseButton: MouseButton;
+  mouseMode: MouseMode;
   clickType: ClickType;
   locationMode: LocationMode;
   fixedX: number;

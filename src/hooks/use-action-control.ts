@@ -17,6 +17,7 @@ interface ActionPayload {
   fixedX: number;
   fixedY: number;
   actionType: ActionType;
+  mouseMode: string;
   holdKey: string;
   keyMode: string;
 }
@@ -35,6 +36,7 @@ function buildPayload(s: Settings, mode: ActionType): ActionPayload {
     fixedX: s.fixedX,
     fixedY: s.fixedY,
     actionType: mode,
+    mouseMode: s.mouseMode,
     holdKey: s.holdKey,
     keyMode: s.keyMode,
   };
