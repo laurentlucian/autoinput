@@ -254,21 +254,19 @@ export function ConfigForm({ config, onChange, disabled = false }: ConfigFormPro
                 size={72}
               />
               <div className="flex-1 space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium">Drag Speed</p>
-                  <p className="text-sm text-muted-foreground tabular-nums font-bold">{config.dragSpeed}</p>
+                <div className="space-y-1">
+                  <p className="text-[10px] text-muted-foreground">Drag Speed</p>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={config.dragSpeed}
+                    disabled={disabled}
+                    onChange={(e) => onChange({ dragSpeed: Math.max(1, parseInt(e.target.value) || 1) })}
+                    className={numberInputClass}
+                  />
                 </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="20"
-                  value={config.dragSpeed}
-                  disabled={disabled}
-                  onChange={(e) => onChange({ dragSpeed: parseInt(e.target.value) })}
-                  className="w-full h-2 accent-primary cursor-pointer"
-                />
-                <p className="text-xs text-muted-foreground/60">
-                  Set the direction -- it drags continuously when toggled on
+                <p className="text-[9px] text-muted-foreground/60">
+                  Pixels per tick (~60fps). Set direction, then toggle on to drag continuously.
                 </p>
               </div>
             </div>
