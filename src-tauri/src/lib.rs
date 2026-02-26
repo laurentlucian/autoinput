@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
@@ -266,6 +266,8 @@ pub struct AutoInputSettings {
     pub action_type: String,
     pub mouse_mode: String,
     pub drag_speed: i32,
+    pub drag_direction_x: f64,
+    pub drag_direction_y: f64,
 
     pub hold_key: String,
     pub key_mode: String,
@@ -288,6 +290,8 @@ impl Default for AutoInputSettings {
             action_type: "click".into(),
             mouse_mode: "click".into(),
             drag_speed: 5,
+            drag_direction_x: 0.0,
+            drag_direction_y: -1.0,
             hold_key: "e".into(),
             key_mode: "hold".into(),
         }
@@ -320,8 +324,6 @@ struct InputState {
     stop: Option<Arc<AtomicBool>>,
     done: Arc<AtomicBool>,
     handle: Option<JoinHandle<()>>,
-    drag_dx: Arc<AtomicI32>,
-    drag_dy: Arc<AtomicI32>,
 }
 
 impl Default for InputState {
@@ -330,8 +332,6 @@ impl Default for InputState {
             stop: None,
             done: Arc::new(AtomicBool::new(true)),
             handle: None,
-            drag_dx: Arc::new(AtomicI32::new(0)),
-            drag_dy: Arc::new(AtomicI32::new(0)),
         }
     }
 }
@@ -390,12 +390,6 @@ fn start_action(
     let done = Arc::new(AtomicBool::new(false));
     let done_clone = Arc::clone(&done);
 
-    // Reset drag vector on start
-    st.drag_dx.store(0, Ordering::Release);
-    st.drag_dy.store(0, Ordering::Release);
-    let drag_dx = Arc::clone(&st.drag_dx);
-    let drag_dy = Arc::clone(&st.drag_dy);
-
     let app_handle = app.clone();
 
     let handle = thread::spawn(move || {
@@ -421,15 +415,17 @@ fn start_action(
             return;
         }
 
-        // Mouse-hold mode: press down, drag with joystick vector, release
+        // Mouse-hold mode: press down, continuously drag in the configured direction, release
         if is_click && is_mouse_hold {
+            // Compute per-tick pixel delta from persisted direction + speed
+            let dx = (settings.drag_direction_x * settings.drag_speed as f64).round() as i32;
+            let dy = (settings.drag_direction_y * settings.drag_speed as f64).round() as i32;
+
             if settings.location_mode == "fixed" {
                 win_input::move_mouse_abs(settings.fixed_x, settings.fixed_y);
             }
             win_input::mouse_down(&settings.mouse_button);
             while !stop_clone.load(Ordering::Acquire) {
-                let dx = drag_dx.load(Ordering::Relaxed);
-                let dy = drag_dy.load(Ordering::Relaxed);
                 if dx != 0 || dy != 0 {
                     win_input::move_mouse_rel(dx, dy);
                 }
@@ -502,13 +498,6 @@ fn stop_action(state: tauri::State<'_, Mutex<InputState>>) -> Result<(), String>
 fn is_running(state: tauri::State<'_, Mutex<InputState>>) -> bool {
     let st = lock_state(&state);
     st.handle.is_some() && !st.done.load(Ordering::Acquire)
-}
-
-#[tauri::command]
-fn update_drag_vector(state: tauri::State<'_, Mutex<InputState>>, dx: i32, dy: i32) {
-    let st = lock_state(&state);
-    st.drag_dx.store(dx, Ordering::Release);
-    st.drag_dy.store(dy, Ordering::Release);
 }
 
 #[tauri::command]
@@ -589,7 +578,6 @@ pub fn run() {
             start_action,
             stop_action,
             is_running,
-            update_drag_vector,
             set_always_on_top,
         ])
         .run(tauri::generate_context!())

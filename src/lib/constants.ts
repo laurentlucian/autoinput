@@ -13,6 +13,8 @@ export const DEFAULT_CONFIG: Omit<InputConfig, "id"> = {
   mouseMode: "click",
   clickType: "single",
   dragSpeed: 5,
+  dragDirectionX: 0,
+  dragDirectionY: -1, // default: drag upward (north)
   locationMode: "current",
   fixedX: 0,
   fixedY: 0,

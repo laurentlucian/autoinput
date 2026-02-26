@@ -42,25 +42,25 @@ function RootLayout() {
     <ActionControlContext.Provider value={actions}>
       <main className="h-screen bg-background flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0" data-tauri-drag-region>
+        <header className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0" data-tauri-drag-region>
           <div className="flex items-center gap-4">
-            <Link to="/" className="text-lg font-bold tracking-tight hover:text-foreground transition-colors">
+            <Link to="/" className="text-xl font-black tracking-widest text-primary hover:text-primary/80 transition-colors">
               AUTOINPUT
             </Link>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             {actions.runningId ? (
-              <span className="text-[10px] uppercase tracking-wider text-destructive font-medium animate-pulse mr-2">
+              <span className="text-sm uppercase tracking-widest text-destructive font-bold animate-pulse">
                 RUNNING
               </span>
             ) : null}
             <button
               type="button"
               onClick={() => updateAppSettings(qc, { alwaysOnTop: !alwaysOnTop })}
-              className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
+              className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors uppercase tracking-wide font-medium"
               title={alwaysOnTop ? "Unpin window" : "Pin window on top"}
             >
-              {alwaysOnTop ? <Pin className="size-3" /> : <PinOff className="size-3" />}
+              {alwaysOnTop ? <Pin className="size-4" /> : <PinOff className="size-4" />}
               {alwaysOnTop ? "PINNED" : "PIN"}
             </button>
           </div>

@@ -1,10 +1,12 @@
 import { useRef, useCallback, useEffect } from "react";
 
-interface VirtualJoystickProps {
-  /** Called when joystick position changes. dx/dy are pixel-per-tick values. */
+interface DirectionPickerProps {
+  /** Normalized direction X: -1..+1 */
+  directionX: number;
+  /** Normalized direction Y: -1..+1 */
+  directionY: number;
+  /** Called when direction changes (persisted values, -1..+1) */
   onChange: (dx: number, dy: number) => void;
-  /** Max pixels per tick at full deflection (default 5) */
-  speed: number;
   /** Disable interaction */
   disabled?: boolean;
   /** Radius of the outer track in px */
@@ -13,12 +15,13 @@ interface VirtualJoystickProps {
 
 const DEADZONE = 0.1;
 
-export function VirtualJoystick({
+export function DirectionPicker({
+  directionX,
+  directionY,
   onChange,
-  speed,
   disabled = false,
-  size = 56,
-}: VirtualJoystickProps) {
+  size = 72,
+}: DirectionPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
@@ -28,7 +31,11 @@ export function VirtualJoystick({
   const radius = size / 2;
   const thumbSize = size * 0.4;
 
-  const updatePosition = useCallback(
+  // Position the thumb based on the persisted direction
+  const thumbX = directionX * radius;
+  const thumbY = directionY * radius;
+
+  const updateFromPointer = useCallback(
     (clientX: number, clientY: number) => {
       const el = containerRef.current;
       if (!el) return;
@@ -47,11 +54,6 @@ export function VirtualJoystick({
         offsetY = (offsetY / dist) * radius;
       }
 
-      // Update thumb visual
-      if (thumbRef.current) {
-        thumbRef.current.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-      }
-
       // Normalize to -1..+1
       const nx = offsetX / radius;
       const ny = offsetY / radius;
@@ -60,33 +62,26 @@ export function VirtualJoystick({
       if (mag < DEADZONE) {
         onChangeRef.current(0, 0);
       } else {
-        const dx = Math.round(nx * mag * speed);
-        const dy = Math.round(ny * mag * speed);
-        onChangeRef.current(dx, dy);
+        // Persist the normalized direction (rounded to 2 decimals for clean storage)
+        onChangeRef.current(
+          Math.round(nx * 100) / 100,
+          Math.round(ny * 100) / 100,
+        );
       }
     },
-    [radius, speed],
+    [radius],
   );
-
-  const resetPosition = useCallback(() => {
-    if (thumbRef.current) {
-      thumbRef.current.style.transform = "translate(0px, 0px)";
-    }
-    onChangeRef.current(0, 0);
-  }, []);
 
   // Global pointer events for dragging outside the element
   useEffect(() => {
     const handleMove = (e: PointerEvent) => {
       if (!dragging.current) return;
       e.preventDefault();
-      updatePosition(e.clientX, e.clientY);
+      updateFromPointer(e.clientX, e.clientY);
     };
 
     const handleUp = () => {
-      if (!dragging.current) return;
       dragging.current = false;
-      resetPosition();
     };
 
     window.addEventListener("pointermove", handleMove);
@@ -95,20 +90,23 @@ export function VirtualJoystick({
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
     };
-  }, [updatePosition, resetPosition]);
+  }, [updateFromPointer]);
+
+  // Derive a human-readable label for the current direction
+  const dirLabel = getDirectionLabel(directionX, directionY);
 
   return (
-    <div className="flex flex-col items-center gap-1.5">
-      <p className="text-[10px] text-muted-foreground">Drag Direction</p>
+    <div className="flex flex-col items-center gap-2">
+      <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium">Drag Direction</p>
       <div
         ref={containerRef}
-        className="relative flex items-center justify-center rounded-full border border-border bg-muted/30 select-none touch-none"
+        className="relative flex items-center justify-center rounded-full border-2 border-border bg-muted/30 select-none touch-none"
         style={{ width: size, height: size }}
         onPointerDown={(e) => {
           if (disabled) return;
           e.preventDefault();
           dragging.current = true;
-          updatePosition(e.clientX, e.clientY);
+          updateFromPointer(e.clientX, e.clientY);
         }}
       >
         {/* Crosshair lines */}
@@ -117,14 +115,14 @@ export function VirtualJoystick({
           <div className="absolute h-px w-full bg-border/40" />
         </div>
         {/* Direction labels */}
-        <span className="absolute top-0.5 text-[7px] text-muted-foreground/50 pointer-events-none">N</span>
-        <span className="absolute bottom-0.5 text-[7px] text-muted-foreground/50 pointer-events-none">S</span>
-        <span className="absolute left-1 text-[7px] text-muted-foreground/50 pointer-events-none">W</span>
-        <span className="absolute right-1 text-[7px] text-muted-foreground/50 pointer-events-none">E</span>
-        {/* Thumb */}
+        <span className="absolute top-0.5 text-[9px] text-muted-foreground/50 pointer-events-none font-medium">N</span>
+        <span className="absolute bottom-0.5 text-[9px] text-muted-foreground/50 pointer-events-none font-medium">S</span>
+        <span className="absolute left-1.5 text-[9px] text-muted-foreground/50 pointer-events-none font-medium">W</span>
+        <span className="absolute right-1.5 text-[9px] text-muted-foreground/50 pointer-events-none font-medium">E</span>
+        {/* Thumb -- positioned from persisted state */}
         <div
           ref={thumbRef}
-          className={`rounded-full border border-border transition-none ${
+          className={`rounded-full border-2 border-border ${
             disabled
               ? "bg-muted-foreground/20"
               : "bg-primary/80 cursor-grab active:cursor-grabbing"
@@ -132,10 +130,27 @@ export function VirtualJoystick({
           style={{
             width: thumbSize,
             height: thumbSize,
-            transform: "translate(0px, 0px)",
+            transform: `translate(${thumbX}px, ${thumbY}px)`,
+            transition: dragging.current ? "none" : "transform 150ms ease",
           }}
         />
       </div>
+      <p className="text-xs text-muted-foreground/60 tabular-nums font-medium">{dirLabel}</p>
     </div>
   );
+}
+
+function getDirectionLabel(x: number, y: number): string {
+  if (x === 0 && y === 0) return "None";
+  const angle = Math.atan2(-y, x) * (180 / Math.PI); // -y because screen Y is inverted
+  // Normalize to 0..360
+  const a = ((angle % 360) + 360) % 360;
+  if (a >= 337.5 || a < 22.5) return "East";
+  if (a >= 22.5 && a < 67.5) return "NE";
+  if (a >= 67.5 && a < 112.5) return "North";
+  if (a >= 112.5 && a < 157.5) return "NW";
+  if (a >= 157.5 && a < 202.5) return "West";
+  if (a >= 202.5 && a < 247.5) return "SW";
+  if (a >= 247.5 && a < 292.5) return "South";
+  return "SE";
 }

@@ -36,6 +36,8 @@ export interface InputConfig {
   mouseMode: MouseMode;
   clickType: ClickType;
   dragSpeed: number;
+  dragDirectionX: number; // -1..+1 normalized
+  dragDirectionY: number; // -1..+1 normalized
   locationMode: LocationMode;
   fixedX: number;
   fixedY: number;

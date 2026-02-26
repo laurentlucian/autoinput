@@ -51,7 +51,7 @@ export function KeyCapture({
         type="button"
         disabled={disabled}
         className={cn(
-          "h-8 w-full rounded-md border bg-background px-2 text-sm text-center",
+          "h-11 w-full rounded-md border bg-background px-3 text-base text-center font-medium",
           "outline-none transition-all",
           "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
           "disabled:pointer-events-none disabled:opacity-50",
@@ -94,23 +94,23 @@ export function KeyCapture({
         {listening ? (
           <span className="text-muted-foreground animate-pulse">{placeholder}</span>
         ) : isEmpty ? (
-          <span className="text-[11px]">Off</span>
+          <span className="text-sm uppercase tracking-wide">Off</span>
         ) : (
-          <span>{value}</span>
+          <span className="uppercase tracking-wide">{value}</span>
         )}
       </button>
 
-      {/* Clear button — shown when there's a value and clearable is enabled */}
+      {/* Clear button -- shown when there's a value and clearable is enabled */}
       {clearable && !isEmpty && !disabled ? (
         <button
           type="button"
           tabIndex={-1}
           className={cn(
-            "absolute -top-1.5 -right-1.5 flex items-center justify-center",
-            "size-4 rounded-full",
+            "absolute -top-2 -right-2 flex items-center justify-center",
+            "size-6 rounded-full",
             "bg-muted text-muted-foreground",
             "hover:bg-destructive hover:text-white",
-            "transition-colors text-[10px] leading-none",
+            "transition-colors text-sm leading-none font-bold",
           )}
           onMouseDown={(e) => {
             // Prevent the parent button from getting focus

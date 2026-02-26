@@ -19,6 +19,8 @@ interface ActionPayload {
   actionType: ActionType;
   mouseMode: string;
   dragSpeed: number;
+  dragDirectionX: number;
+  dragDirectionY: number;
   holdKey: string;
   keyMode: string;
 }
@@ -39,6 +41,8 @@ function buildPayload(config: InputConfig): ActionPayload {
     actionType: config.actionType,
     mouseMode: config.mouseMode,
     dragSpeed: config.dragSpeed,
+    dragDirectionX: config.dragDirectionX,
+    dragDirectionY: config.dragDirectionY,
     holdKey: config.holdKey,
     keyMode: config.keyMode,
   };

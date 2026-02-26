@@ -12,12 +12,12 @@ interface HotkeyGridProps {
 
 export function HotkeyGrid({ value, onChange, label, disabled }: HotkeyGridProps) {
   return (
-    <div className="space-y-2">
-      {label ? <p className="text-[10px] text-muted-foreground">{label}</p> : null}
-      <div className="grid grid-cols-3 gap-2">
+    <div className="space-y-3">
+      {label ? <p className="text-sm uppercase tracking-widest text-muted-foreground font-bold">{label}</p> : null}
+      <div className="grid grid-cols-3 gap-3">
         {OPERATIONS.map((op) => (
           <div key={op} className="space-y-1">
-            <p className="text-[10px] text-muted-foreground text-center uppercase">{op}</p>
+            <p className="text-xs text-muted-foreground text-center uppercase tracking-widest font-medium">{op}</p>
             <KeyCapture
               value={value[op]}
               disabled={disabled}

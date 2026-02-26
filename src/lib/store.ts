@@ -28,6 +28,8 @@ function migrateLegacy(legacy: LegacySettings): AppState {
     mouseMode: legacy.mouseMode,
     clickType: legacy.clickType,
     dragSpeed: legacy.dragSpeed,
+    dragDirectionX: 0,
+    dragDirectionY: -1,
     locationMode: legacy.locationMode,
     fixedX: legacy.fixedX,
     fixedY: legacy.fixedY,
@@ -52,6 +54,8 @@ function migrateLegacy(legacy: LegacySettings): AppState {
     mouseMode: legacy.mouseMode,
     clickType: legacy.clickType,
     dragSpeed: legacy.dragSpeed,
+    dragDirectionX: 0,
+    dragDirectionY: -1,
     locationMode: legacy.locationMode,
     fixedX: legacy.fixedX,
     fixedY: legacy.fixedY,
@@ -74,6 +78,11 @@ export async function loadAppState(): Promise<AppState> {
     // Try new format first
     const state = await store.get<AppState>(STATE_KEY);
     if (state && Array.isArray(state.configs)) {
+      // Back-fill defaults for any new fields added after initial release
+      for (const cfg of state.configs) {
+        if (cfg.dragDirectionX == null) cfg.dragDirectionX = 0;
+        if (cfg.dragDirectionY == null) cfg.dragDirectionY = -1;
+      }
       return { ...DEFAULT_APP_STATE, ...state };
     }
 
