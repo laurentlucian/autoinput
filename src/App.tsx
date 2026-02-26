@@ -92,7 +92,7 @@ function App() {
         {running ? (
           <div className="bg-destructive/15 border border-destructive/40 text-destructive text-xs p-2 flex items-center justify-between animate-pulse">
             <span className="font-medium tracking-wide">
-              RUNNING {runningMode === "click" ? "MOUSE CLICK" : "KEY HOLD"}
+              RUNNING {runningMode === "click" ? "MOUSE" : "KEY"}
             </span>
             <button
               type="button"
@@ -171,7 +171,7 @@ function App() {
                 className="flex-1"
                 onClick={() => set("activeMode", "click")}
               >
-                Mouse Click
+                Mouse
               </Button>
               <Button
                 variant={isClickActive ? "ghost" : "secondary"}
@@ -179,7 +179,7 @@ function App() {
                 className="flex-1"
                 onClick={() => set("activeMode", "hold-key")}
               >
-                Key Hold
+                Key
               </Button>
             </div>
           </section>
@@ -302,7 +302,7 @@ function App() {
             <div className="space-y-1">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                 <Mouse className="size-3" />
-                Mouse Click
+                Mouse
               </p>
               <div className="grid grid-cols-3 gap-2">
                 <Button
@@ -335,7 +335,7 @@ function App() {
             <div className="space-y-1">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                 <Keyboard className="size-3" />
-                Key Hold
+                Key
               </p>
               <div className="grid grid-cols-3 gap-2">
                 <Button
@@ -402,7 +402,7 @@ function MouseClickSection({
       <div className="flex items-center justify-between">
         <p className={`${labelClass} flex items-center gap-1.5`}>
           <Mouse className="size-3.5" />
-          Mouse Click
+          Mouse
         </p>
         {isClickRunning ? (
           <span className="text-[10px] uppercase tracking-wider text-destructive font-medium animate-pulse">Running</span>
@@ -537,7 +537,7 @@ function KeyHoldSection({
       <div className="flex items-center justify-between">
         <p className={`${labelClass} flex items-center gap-1.5`}>
           <Keyboard className="size-3.5" />
-          Key Hold
+          Key
         </p>
         {isKeyHoldRunning ? (
           <span className="text-[10px] uppercase tracking-wider text-destructive font-medium animate-pulse">Running</span>
