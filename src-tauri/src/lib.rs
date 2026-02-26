@@ -417,9 +417,32 @@ fn start_action(
 
         // Mouse-hold mode: press down, continuously drag in the configured direction, release
         if is_click && is_mouse_hold {
-            // Compute per-tick pixel delta from persisted direction + speed
-            let dx = (settings.drag_direction_x * settings.drag_speed as f64).round() as i32;
-            let dy = (settings.drag_direction_y * settings.drag_speed as f64).round() as i32;
+            // We want a consistent pixels-per-second regardless of tick rate.
+            // Cap per-tick displacement at 10px so the OS processes each move
+            // naturally, and vary the sleep interval to achieve the target speed.
+            //
+            // target speed = drag_speed * 62.5 px/s  (preserving old scale at low values)
+            // sleep_ms = (per_tick_px / target_speed_per_sec) * 1000
+            //          = per_tick_px / (drag_speed * 0.0625)
+            //
+            // At drag_speed <= 10 this gives the same 16ms / same behavior as before.
+            // At drag_speed = 100 the sleep drops to ~1.6ms → ~625 moves/s → 6250 px/s
+            // At drag_speed = 500 the sleep drops to ~0.3ms → ~3125 moves/s → 31250 px/s
+            let speed = settings.drag_speed.max(1) as f64;
+            let dir_mag = (settings.drag_direction_x.powi(2) + settings.drag_direction_y.powi(2))
+                .sqrt()
+                .max(0.001);
+
+            // Per-tick displacement: cap magnitude at 10px for smooth OS event handling
+            let per_tick_cap = 10.0_f64;
+            let per_tick_mag = per_tick_cap.min(speed);
+            let dx = (settings.drag_direction_x / dir_mag * per_tick_mag).round() as i32;
+            let dy = (settings.drag_direction_y / dir_mag * per_tick_mag).round() as i32;
+
+            // Derive sleep from target velocity: target_px_per_sec = speed * 62.5
+            let target_pps = speed * 62.5;
+            let sleep_secs = per_tick_mag / target_pps;
+            let sleep_us = (sleep_secs * 1_000_000.0).round().max(200.0) as u64; // floor at 200µs
 
             if settings.location_mode == "fixed" {
                 win_input::move_mouse_abs(settings.fixed_x, settings.fixed_y);
@@ -429,7 +452,7 @@ fn start_action(
                 if dx != 0 || dy != 0 {
                     win_input::move_mouse_rel(dx, dy);
                 }
-                thread::sleep(Duration::from_millis(16));
+                thread::sleep(Duration::from_micros(sleep_us));
             }
             win_input::mouse_up(&settings.mouse_button);
             done_clone.store(true, Ordering::Release);

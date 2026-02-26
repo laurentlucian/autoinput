@@ -266,7 +266,7 @@ export function ConfigForm({ config, onChange, disabled = false }: ConfigFormPro
                   />
                 </div>
                 <p className="text-[9px] text-muted-foreground/60">
-                  Pixels per tick (~60fps). Set direction, then toggle on to drag continuously.
+                  Speed factor. Higher values = faster drags. Set direction, then toggle on.
                 </p>
               </div>
             </div>
