@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Plus, Play, Square, Repeat, Pencil, Trash2, Mouse, Keyboard } from "lucide-react";
+import { Plus, Square, Pencil, Trash2, Mouse, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { appStateQueryOptions, deleteConfig } from "@/lib/queries";
+import { KeyCapture } from "@/components/KeyCapture";
+import { appStateQueryOptions, deleteConfig, updateConfig } from "@/lib/queries";
 import { useActionControl } from "@/hooks/use-action-control";
 import type { InputConfig } from "@/types/settings";
 
@@ -27,14 +28,6 @@ function intervalSummary(c: InputConfig): string {
   if (c.milliseconds > 0) parts.push(`${c.milliseconds}ms`);
   if (parts.length === 0) return "0ms";
   return parts.join(" ");
-}
-
-function hotkeySummary(c: InputConfig): string {
-  const hk = c.hotkeys;
-  const parts: string[] = [];
-  if (hk.start) parts.push(hk.start);
-  if (hk.toggle) parts.push(hk.toggle);
-  return parts.length > 0 ? parts.join(" / ") : "No hotkeys";
 }
 
 // ---------------------------------------------------------------------------
@@ -166,10 +159,6 @@ export function HomePage() {
                     <span className="text-sm text-muted-foreground tabular-nums">
                       {intervalSummary(config)}
                     </span>
-                    <span className="text-sm text-muted-foreground/40">|</span>
-                    <span className="text-sm text-muted-foreground">
-                      {hotkeySummary(config)}
-                    </span>
                   </div>
                 </div>
 
@@ -185,29 +174,21 @@ export function HomePage() {
                       <Square className="size-4" />
                       Stop
                     </Button>
-                  ) : (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="success"
-                        className="gap-2"
-                        onClick={() => actions.startConfig(config)}
-                        disabled={!!actions.runningId}
-                      >
-                        <Play className="size-4" />
-                        Start
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-2"
-                        onClick={() => actions.toggleConfig(config)}
-                      >
-                        <Repeat className="size-4" />
-                        Toggle
-                      </Button>
-                    </>
-                  )}
+                  ) : null}
+
+                  {/* Toggle hotkey */}
+                  <div className="w-20">
+                    <KeyCapture
+                      value={config.hotkeys.toggle}
+                      clearable
+                      onChange={(key) =>
+                        updateConfig(qc, config.id, {
+                          hotkeys: { ...config.hotkeys, toggle: key },
+                        })
+                      }
+                    />
+                  </div>
+
                   <Link to="/edit/$configId" params={{ configId: config.id }}>
                     <Button size="icon-sm" variant="ghost">
                       <Pencil className="size-4" />
