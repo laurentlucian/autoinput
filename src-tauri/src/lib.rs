@@ -301,17 +301,17 @@ impl Default for AutoInputSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HotkeySettings {
-    pub start: String,
-    pub stop: String,
-    pub toggle: String,
+    pub start: Option<String>,
+    pub stop: Option<String>,
+    pub toggle: Option<String>,
 }
 
 impl Default for HotkeySettings {
     fn default() -> Self {
         Self {
-            start: "F6".into(),
-            stop: "F7".into(),
-            toggle: "F8".into(),
+            start: None,
+            stop: None,
+            toggle: None,
         }
     }
 }

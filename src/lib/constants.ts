@@ -20,7 +20,7 @@ export const DEFAULT_CONFIG: Omit<InputConfig, "id"> = {
   fixedY: 0,
   holdKey: "e",
   keyMode: "hold",
-  hotkeys: { start: "F6", stop: "F7", toggle: "F8" },
+  hotkeys: { start: null, stop: null, toggle: null },
 };
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
