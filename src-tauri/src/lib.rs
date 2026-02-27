@@ -531,6 +531,51 @@ fn set_always_on_top(app: AppHandle, enabled: bool) -> Result<(), String> {
     Ok(())
 }
 
+/// Switch to compact "dot" mode: shrink window, remove decorations, pin on top.
+/// Returns the previous (width, height) so the frontend can restore later.
+#[tauri::command]
+fn enter_compact_mode(app: AppHandle) -> Result<(u32, u32), String> {
+    let win = app.get_webview_window("main").ok_or("window not found")?;
+
+    // Save current size
+    let size = win.outer_size().map_err(|e| e.to_string())?;
+    let prev = (size.width, size.height);
+
+    // Remove decorations, disable resize, pin on top
+    win.set_decorations(false).map_err(|e| e.to_string())?;
+    win.set_resizable(false).map_err(|e| e.to_string())?;
+    win.set_always_on_top(true).map_err(|e| e.to_string())?;
+
+    // Remove min-size constraint, then resize
+    win.set_min_size(None::<tauri::LogicalSize<f64>>)
+        .map_err(|e| e.to_string())?;
+    win.set_size(tauri::LogicalSize::new(72.0, 72.0))
+        .map_err(|e| e.to_string())?;
+
+    Ok(prev)
+}
+
+/// Restore from compact mode back to the full window.
+#[tauri::command]
+fn exit_compact_mode(app: AppHandle, width: u32, height: u32) -> Result<(), String> {
+    let win = app.get_webview_window("main").ok_or("window not found")?;
+
+    // Restore decorations, resize, unpin
+    win.set_decorations(true).map_err(|e| e.to_string())?;
+    win.set_resizable(true).map_err(|e| e.to_string())?;
+    win.set_always_on_top(false).map_err(|e| e.to_string())?;
+
+    // Restore min-size constraint
+    win.set_min_size(Some(tauri::LogicalSize::new(720.0, 500.0)))
+        .map_err(|e| e.to_string())?;
+
+    // Restore previous size
+    win.set_size(tauri::PhysicalSize::new(width, height))
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // App entry
 // ---------------------------------------------------------------------------
@@ -602,6 +647,8 @@ pub fn run() {
             stop_action,
             is_running,
             set_always_on_top,
+            enter_compact_mode,
+            exit_compact_mode,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

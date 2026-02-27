@@ -134,6 +134,23 @@
   --shadow-2xl: var(--shadow-2xl);
 }
 
+@keyframes dot-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 0 0 oklch(0.65 0.2 25 / 0.7);
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.85;
+    box-shadow: 0 0 16px 8px oklch(0.65 0.2 25 / 0);
+  }
+}
+
+.compact-dot-pulse {
+  animation: dot-pulse 1.5s ease-in-out infinite;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

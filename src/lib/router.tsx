@@ -6,13 +6,14 @@ import {
   Outlet,
   Link,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pin, PinOff } from "lucide-react";
 import { appStateQueryOptions, updateAppSettings } from "@/lib/queries";
 import { useActionControlProvider, ActionControlContext } from "@/hooks/use-action-control";
 import { useHotkeys } from "@/hooks/use-hotkeys";
+import { CompactDot } from "@/components/CompactDot";
 import { HomePage } from "@/routes/home";
 import { AddPage } from "@/routes/add";
 import { EditPage } from "@/routes/edit";
@@ -29,15 +30,93 @@ function RootLayout() {
   // Register hotkeys for all configs
   useHotkeys(state?.configs ?? [], actions);
 
-  // Always-on-top
-  useEffect(() => {
-    if (state?.settings.alwaysOnTop !== undefined) {
-      invoke("set_always_on_top", { enabled: state.settings.alwaysOnTop }).catch(() => {});
-    }
-  }, [state?.settings.alwaysOnTop]);
-
   const alwaysOnTop = state?.settings.alwaysOnTop ?? false;
+  const configs = state?.configs ?? [];
 
+  // ---- Compact mode state ----
+  const [isCompact, setIsCompact] = useState(false);
+  const savedSizeRef = useRef<[number, number] | null>(null);
+  const transitioningRef = useRef(false);
+
+  // Determine which config is running (for the tooltip)
+  const runningConfig = actions.runningId
+    ? configs.find((c) => c.id === actions.runningId)
+    : undefined;
+
+  // Check if any config has hotkeys set
+  const hasAnyHotkeys = configs.some(
+    (c) => c.hotkeys.start || c.hotkeys.stop || c.hotkeys.toggle
+  );
+
+  // ---- Enter compact mode ----
+  const enterCompact = useCallback(async () => {
+    if (transitioningRef.current || isCompact) return;
+    transitioningRef.current = true;
+    try {
+      const prev = await invoke<[number, number]>("enter_compact_mode");
+      savedSizeRef.current = prev;
+      setIsCompact(true);
+    } catch {
+      // Failed to enter compact mode, ignore
+    } finally {
+      transitioningRef.current = false;
+    }
+  }, [isCompact]);
+
+  // ---- Exit compact mode ----
+  const exitCompact = useCallback(async () => {
+    if (transitioningRef.current || !isCompact) return;
+    transitioningRef.current = true;
+    try {
+      const [w, h] = savedSizeRef.current ?? [900, 700];
+      await invoke("exit_compact_mode", { width: w, height: h });
+      savedSizeRef.current = null;
+      setIsCompact(false);
+      // Also unpin the setting
+      updateAppSettings(qc, { alwaysOnTop: false });
+    } catch {
+      // Failed to exit compact mode, ignore
+    } finally {
+      transitioningRef.current = false;
+    }
+  }, [isCompact, qc]);
+
+  // ---- Effect: alwaysOnTop is "armed" — enter compact when running + has hotkeys ----
+  // While idle, the window is NOT pinned on top — pin is just armed, waiting.
+  useEffect(() => {
+    if (!alwaysOnTop || isCompact) return;
+
+    if (actions.runningId && hasAnyHotkeys) {
+      // Running + has hotkeys → go compact
+      enterCompact();
+    }
+    // Idle or no hotkeys → do NOT pin the window, just keep the setting armed
+  }, [alwaysOnTop, actions.runningId, hasAnyHotkeys, isCompact, enterCompact]);
+
+  // ---- Effect: action stopped while in compact → exit compact ----
+  useEffect(() => {
+    if (isCompact && !actions.runningId) {
+      exitCompact();
+    }
+  }, [isCompact, actions.runningId, exitCompact]);
+
+  // ---- Effect: when pin is disarmed, ensure window is not always-on-top ----
+  useEffect(() => {
+    if (!isCompact && !alwaysOnTop) {
+      invoke("set_always_on_top", { enabled: false }).catch(() => {});
+    }
+  }, [isCompact, alwaysOnTop]);
+
+  // ---- Compact mode render ----
+  if (isCompact) {
+    return (
+      <ActionControlContext.Provider value={actions}>
+        <CompactDot config={runningConfig} />
+      </ActionControlContext.Provider>
+    );
+  }
+
+  // ---- Full mode render ----
   return (
     <ActionControlContext.Provider value={actions}>
       <main className="h-screen bg-background flex flex-col overflow-hidden">
@@ -58,10 +137,10 @@ function RootLayout() {
               type="button"
               onClick={() => updateAppSettings(qc, { alwaysOnTop: !alwaysOnTop })}
               className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors uppercase tracking-wide font-medium"
-              title={alwaysOnTop ? "Unpin window" : "Pin window on top"}
+              title={alwaysOnTop ? "Disarm compact mode" : "Arm compact mode — shrinks to dot when running"}
             >
               {alwaysOnTop ? <Pin className="size-4" /> : <PinOff className="size-4" />}
-              {alwaysOnTop ? "PINNED" : "PIN"}
+              {alwaysOnTop ? "ARMED" : "PIN"}
             </button>
           </div>
         </header>
