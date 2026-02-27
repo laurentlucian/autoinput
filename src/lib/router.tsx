@@ -72,14 +72,12 @@ function RootLayout() {
       await invoke("exit_compact_mode", { width: w, height: h });
       savedSizeRef.current = null;
       setIsCompact(false);
-      // Also unpin the setting
-      updateAppSettings(qc, { alwaysOnTop: false });
     } catch {
       // Failed to exit compact mode, ignore
     } finally {
       transitioningRef.current = false;
     }
-  }, [isCompact, qc]);
+  }, [isCompact]);
 
   // ---- Effect: alwaysOnTop is "armed" — enter compact when running + has hotkeys ----
   // While idle, the window is NOT pinned on top — pin is just armed, waiting.
@@ -129,9 +127,7 @@ function RootLayout() {
           </div>
           <div className="flex items-center gap-4">
             {actions.runningId ? (
-              <span className="text-sm uppercase tracking-widest text-destructive font-bold animate-pulse">
-                RUNNING
-              </span>
+              <span className="w-2 h-2 rounded-full bg-destructive compact-dot-pulse" />
             ) : null}
             <button
               type="button"

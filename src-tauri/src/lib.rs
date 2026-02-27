@@ -549,7 +549,7 @@ fn enter_compact_mode(app: AppHandle) -> Result<(u32, u32), String> {
     // Remove min-size constraint, then resize
     win.set_min_size(None::<tauri::LogicalSize<f64>>)
         .map_err(|e| e.to_string())?;
-    win.set_size(tauri::LogicalSize::new(72.0, 72.0))
+    win.set_size(tauri::LogicalSize::new(28.0, 28.0))
         .map_err(|e| e.to_string())?;
 
     Ok(prev)

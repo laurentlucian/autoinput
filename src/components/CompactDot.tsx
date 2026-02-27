@@ -16,7 +16,7 @@ export function CompactDot({ config }: CompactDotProps) {
       data-tauri-drag-region
     >
       <div
-        className="w-12 h-12 rounded-full bg-destructive compact-dot-pulse"
+        className="w-3 h-3 rounded-full bg-destructive/90 compact-dot-pulse"
         title={tooltipText}
         data-tauri-drag-region
       />
