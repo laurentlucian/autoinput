@@ -43,8 +43,28 @@ export function HomePage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground text-lg">Loading...</p>
+      <div className="p-6 max-w-4xl mx-auto space-y-5">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="w-20 h-4 bg-muted/40 rounded-sm animate-pulse" />
+            <div className="w-36 h-3 bg-muted/30 rounded-sm animate-pulse" />
+          </div>
+          <div className="w-28 h-9 bg-muted/40 rounded-sm animate-pulse" />
+        </div>
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="border-2 border-border p-4 flex items-center gap-5">
+            <div className="w-12 h-12 border-2 border-border bg-muted/30 shrink-0 animate-pulse" />
+            <div className="flex-1 space-y-2">
+              <div className="w-32 h-4 bg-muted/40 rounded-sm animate-pulse" />
+              <div className="w-48 h-3 bg-muted/30 rounded-sm animate-pulse" />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-20 h-8 bg-muted/30 rounded-sm animate-pulse" />
+              <div className="w-8 h-8 bg-muted/30 rounded-sm animate-pulse" />
+              <div className="w-8 h-8 bg-muted/30 rounded-sm animate-pulse" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
