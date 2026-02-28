@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { invoke } from "@tauri-apps/api/core";
 import { router } from "@/lib/router";
 import "./App.css";
 
@@ -28,9 +29,5 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   </React.StrictMode>,
 );
 
-// Dismiss the HTML splash screen once React has mounted
-const splash = document.getElementById("splash");
-if (splash) {
-  splash.classList.add("fade-out");
-  splash.addEventListener("transitionend", () => splash.remove());
-}
+// Show the window once React has mounted (window starts hidden to avoid blank flash)
+invoke("show_main_window").catch(() => {});

@@ -523,6 +523,14 @@ fn is_running(state: tauri::State<'_, Mutex<InputState>>) -> bool {
     st.handle.is_some() && !st.done.load(Ordering::Acquire)
 }
 
+#[tauri::command]
+fn show_main_window(app: AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+}
+
 // ---------------------------------------------------------------------------
 // App entry
 // ---------------------------------------------------------------------------
@@ -593,6 +601,7 @@ pub fn run() {
             start_action,
             stop_action,
             is_running,
+            show_main_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

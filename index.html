@@ -6,32 +6,9 @@
   <link rel="icon" type="image/svg+xml" href="/logo.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AutoInput</title>
-  <style>
-    /* Inline splash — renders instantly before any JS loads */
-    body { margin: 0; background: oklch(0.12 0.005 260); }
-    #splash {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: oklch(0.12 0.005 260);
-      z-index: 9999;
-      transition: opacity 0.15s ease-out;
-    }
-    #splash.fade-out { opacity: 0; pointer-events: none; }
-    #splash span {
-      font-family: monospace;
-      font-size: 1.25rem;
-      font-weight: 900;
-      letter-spacing: 0.15em;
-      color: oklch(0.75 0.15 185);
-    }
-  </style>
 </head>
 
 <body>
-  <div id="splash"><span>AUTOINPUT</span></div>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>
