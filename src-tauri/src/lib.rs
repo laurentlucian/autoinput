@@ -541,10 +541,13 @@ fn enter_compact_mode(app: AppHandle) -> Result<(u32, u32), String> {
     let size = win.outer_size().map_err(|e| e.to_string())?;
     let prev = (size.width, size.height);
 
-    // Remove decorations, disable resize, pin on top
+    // Remove decorations, disable resize, pin on top, prevent focus stealing
     win.set_decorations(false).map_err(|e| e.to_string())?;
     win.set_resizable(false).map_err(|e| e.to_string())?;
     win.set_always_on_top(true).map_err(|e| e.to_string())?;
+    win.set_ignore_cursor_events(true)
+        .map_err(|e| e.to_string())?;
+    win.set_focusable(false).map_err(|e| e.to_string())?;
 
     // Remove min-size constraint, then resize
     win.set_min_size(None::<tauri::LogicalSize<f64>>)
@@ -560,7 +563,10 @@ fn enter_compact_mode(app: AppHandle) -> Result<(u32, u32), String> {
 fn exit_compact_mode(app: AppHandle, width: u32, height: u32) -> Result<(), String> {
     let win = app.get_webview_window("main").ok_or("window not found")?;
 
-    // Restore decorations, resize, unpin
+    // Restore decorations, resize, unpin, re-enable focus and cursor
+    win.set_ignore_cursor_events(false)
+        .map_err(|e| e.to_string())?;
+    win.set_focusable(true).map_err(|e| e.to_string())?;
     win.set_decorations(true).map_err(|e| e.to_string())?;
     win.set_resizable(true).map_err(|e| e.to_string())?;
     win.set_always_on_top(false).map_err(|e| e.to_string())?;
