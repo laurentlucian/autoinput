@@ -1,5 +1,5 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
-import type { InputConfig, AppState, AppSettings } from "@/types/settings";
+import type { InputConfig, AppState } from "@/types/settings";
 import { loadAppState, saveAppState, createConfig } from "@/lib/store";
 
 // ---------------------------------------------------------------------------
@@ -53,9 +53,4 @@ export function reorderConfigs(qc: QueryClient, configs: InputConfig[]) {
   updateState(qc, (prev) => ({ ...prev, configs }));
 }
 
-export function updateAppSettings(qc: QueryClient, patch: Partial<AppSettings>) {
-  updateState(qc, (prev) => ({
-    ...prev,
-    settings: { ...prev.settings, ...patch },
-  }));
-}
+

@@ -1,6 +1,6 @@
 import { load } from "@tauri-apps/plugin-store";
 import { nanoid } from "nanoid";
-import type { InputConfig, AppState, LegacySettings } from "@/types/settings";
+import type { InputConfig, AppState } from "@/types/settings";
 import { DEFAULT_APP_STATE, DEFAULT_CONFIG } from "@/lib/constants";
 
 const STORE_FILE = "settings.json";
@@ -10,7 +10,17 @@ const LEGACY_KEY = "settings";
 /**
  * Migrate legacy single-settings format to the new multi-config format.
  */
-function migrateLegacy(legacy: LegacySettings): AppState {
+function migrateLegacy(legacy: Record<string, unknown>): AppState {
+  const l = legacy as {
+    hours: number; minutes: number; seconds: number; milliseconds: number;
+    repeatMode: string; repeatCount: number; mouseButton: string; mouseMode: string;
+    clickType: string; dragSpeed: number; locationMode: string; fixedX: number; fixedY: number;
+    holdKey: string; keyMode: string;
+    hotkeys?: { start: string; stop: string; toggle: string };
+    clickHotkeys?: { start: string; stop: string; toggle: string };
+    keyHoldHotkeys?: { start: string; stop: string; toggle: string };
+  };
+
   const configs: InputConfig[] = [];
 
   // Create a mouse config from legacy if it was used
@@ -18,24 +28,24 @@ function migrateLegacy(legacy: LegacySettings): AppState {
     id: nanoid(),
     name: "Mouse (migrated)",
     actionType: "click",
-    hours: legacy.hours,
-    minutes: legacy.minutes,
-    seconds: legacy.seconds,
-    milliseconds: legacy.milliseconds,
-    repeatMode: legacy.repeatMode,
-    repeatCount: legacy.repeatCount,
-    mouseButton: legacy.mouseButton,
-    mouseMode: legacy.mouseMode,
-    clickType: legacy.clickType,
-    dragSpeed: legacy.dragSpeed,
+    hours: l.hours,
+    minutes: l.minutes,
+    seconds: l.seconds,
+    milliseconds: l.milliseconds,
+    repeatMode: l.repeatMode as InputConfig["repeatMode"],
+    repeatCount: l.repeatCount,
+    mouseButton: l.mouseButton as InputConfig["mouseButton"],
+    mouseMode: l.mouseMode as InputConfig["mouseMode"],
+    clickType: l.clickType as InputConfig["clickType"],
+    dragSpeed: l.dragSpeed,
     dragDirectionX: 0,
     dragDirectionY: -1,
-    locationMode: legacy.locationMode,
-    fixedX: legacy.fixedX,
-    fixedY: legacy.fixedY,
-    holdKey: legacy.holdKey,
-    keyMode: legacy.keyMode,
-    hotkeys: legacy.hotkeys ?? legacy.clickHotkeys ?? { start: "F6", stop: "F7", toggle: "F8" },
+    locationMode: l.locationMode as InputConfig["locationMode"],
+    fixedX: l.fixedX,
+    fixedY: l.fixedY,
+    holdKey: l.holdKey,
+    keyMode: l.keyMode as InputConfig["keyMode"],
+    hotkeys: l.hotkeys ?? l.clickHotkeys ?? { start: "F6", stop: "F7", toggle: "F8" },
   };
   configs.push(mouseConfig);
 
@@ -44,31 +54,28 @@ function migrateLegacy(legacy: LegacySettings): AppState {
     id: nanoid(),
     name: "Key (migrated)",
     actionType: "hold-key",
-    hours: legacy.hours,
-    minutes: legacy.minutes,
-    seconds: legacy.seconds,
-    milliseconds: legacy.milliseconds,
-    repeatMode: legacy.repeatMode,
-    repeatCount: legacy.repeatCount,
-    mouseButton: legacy.mouseButton,
-    mouseMode: legacy.mouseMode,
-    clickType: legacy.clickType,
-    dragSpeed: legacy.dragSpeed,
+    hours: l.hours,
+    minutes: l.minutes,
+    seconds: l.seconds,
+    milliseconds: l.milliseconds,
+    repeatMode: l.repeatMode as InputConfig["repeatMode"],
+    repeatCount: l.repeatCount,
+    mouseButton: l.mouseButton as InputConfig["mouseButton"],
+    mouseMode: l.mouseMode as InputConfig["mouseMode"],
+    clickType: l.clickType as InputConfig["clickType"],
+    dragSpeed: l.dragSpeed,
     dragDirectionX: 0,
     dragDirectionY: -1,
-    locationMode: legacy.locationMode,
-    fixedX: legacy.fixedX,
-    fixedY: legacy.fixedY,
-    holdKey: legacy.holdKey,
-    keyMode: legacy.keyMode,
-    hotkeys: legacy.keyHoldHotkeys ?? { start: "F9", stop: "F10", toggle: "F11" },
+    locationMode: l.locationMode as InputConfig["locationMode"],
+    fixedX: l.fixedX,
+    fixedY: l.fixedY,
+    holdKey: l.holdKey,
+    keyMode: l.keyMode as InputConfig["keyMode"],
+    hotkeys: l.keyHoldHotkeys ?? { start: "F9", stop: "F10", toggle: "F11" },
   };
   configs.push(keyConfig);
 
-  return {
-    configs,
-    settings: { alwaysOnTop: legacy.alwaysOnTop },
-  };
+  return { configs };
 }
 
 export async function loadAppState(): Promise<AppState> {
@@ -87,7 +94,7 @@ export async function loadAppState(): Promise<AppState> {
     }
 
     // Fall back to legacy migration
-    const legacy = await store.get<LegacySettings>(LEGACY_KEY);
+    const legacy = await store.get<Record<string, unknown>>(LEGACY_KEY);
     if (legacy) {
       const migrated = migrateLegacy(legacy);
       // Save migrated state and clean up

@@ -51,43 +51,10 @@ export interface InputConfig {
 }
 
 /**
- * App-level settings (not per-config).
- */
-export interface AppSettings {
-  alwaysOnTop: boolean;
-}
-
-/**
  * Full persisted state.
  */
 export interface AppState {
   configs: InputConfig[];
-  settings: AppSettings;
 }
 
-// ---- Legacy type kept for migration ----
-export type HotkeyLayout = "shared" | "independent";
 
-export interface LegacySettings {
-  activeMode: ActionType;
-  hotkeyLayout: HotkeyLayout;
-  hours: number;
-  minutes: number;
-  seconds: number;
-  milliseconds: number;
-  repeatMode: RepeatMode;
-  repeatCount: number;
-  alwaysOnTop: boolean;
-  hotkeys: HotkeySet;
-  clickHotkeys: HotkeySet;
-  keyHoldHotkeys: HotkeySet;
-  mouseButton: MouseButton;
-  mouseMode: MouseMode;
-  clickType: ClickType;
-  dragSpeed: number;
-  locationMode: LocationMode;
-  fixedX: number;
-  fixedY: number;
-  holdKey: string;
-  keyMode: KeyMode;
-}

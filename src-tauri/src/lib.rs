@@ -523,74 +523,6 @@ fn is_running(state: tauri::State<'_, Mutex<InputState>>) -> bool {
     st.handle.is_some() && !st.done.load(Ordering::Acquire)
 }
 
-#[tauri::command]
-fn set_always_on_top(app: AppHandle, enabled: bool) -> Result<(), String> {
-    if let Some(win) = app.get_webview_window("main") {
-        win.set_always_on_top(enabled).map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
-
-/// Switch to compact "dot" mode: shrink window, remove decorations, pin on top.
-/// Returns the previous (width, height) so the frontend can restore later.
-#[tauri::command]
-fn enter_compact_mode(app: AppHandle) -> Result<(u32, u32), String> {
-    let win = app.get_webview_window("main").ok_or("window not found")?;
-
-    // Save current size
-    let size = win.outer_size().map_err(|e| e.to_string())?;
-    let prev = (size.width, size.height);
-
-    // Remove decorations, disable resize, pin on top, prevent focus stealing
-    win.set_decorations(false).map_err(|e| e.to_string())?;
-    win.set_resizable(false).map_err(|e| e.to_string())?;
-    win.set_always_on_top(true).map_err(|e| e.to_string())?;
-    win.set_ignore_cursor_events(true)
-        .map_err(|e| e.to_string())?;
-    win.set_focusable(false).map_err(|e| e.to_string())?;
-
-    // Remove min-size constraint, then resize
-    win.set_min_size(None::<tauri::LogicalSize<f64>>)
-        .map_err(|e| e.to_string())?;
-    win.set_size(tauri::LogicalSize::new(28.0, 28.0))
-        .map_err(|e| e.to_string())?;
-
-    Ok(prev)
-}
-
-/// Restore from compact mode back to the full window.
-/// Window stays non-focusable during resize to avoid stealing focus from the game.
-/// The frontend calls `restore_focus` after a short delay to re-enable interaction.
-#[tauri::command]
-fn exit_compact_mode(app: AppHandle, width: u32, height: u32) -> Result<(), String> {
-    let win = app.get_webview_window("main").ok_or("window not found")?;
-
-    // Restore decorations, resize, unpin — but keep non-focusable to avoid stealing focus
-    win.set_decorations(true).map_err(|e| e.to_string())?;
-    win.set_resizable(true).map_err(|e| e.to_string())?;
-    win.set_always_on_top(false).map_err(|e| e.to_string())?;
-
-    // Restore min-size constraint
-    win.set_min_size(Some(tauri::LogicalSize::new(720.0, 500.0)))
-        .map_err(|e| e.to_string())?;
-
-    // Restore previous size
-    win.set_size(tauri::PhysicalSize::new(width, height))
-        .map_err(|e| e.to_string())?;
-
-    Ok(())
-}
-
-/// Re-enable focus and cursor events after the window has finished restoring.
-#[tauri::command]
-fn restore_focus(app: AppHandle) -> Result<(), String> {
-    let win = app.get_webview_window("main").ok_or("window not found")?;
-    win.set_ignore_cursor_events(false)
-        .map_err(|e| e.to_string())?;
-    win.set_focusable(true).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
 // ---------------------------------------------------------------------------
 // App entry
 // ---------------------------------------------------------------------------
@@ -661,10 +593,6 @@ pub fn run() {
             start_action,
             stop_action,
             is_running,
-            set_always_on_top,
-            enter_compact_mode,
-            exit_compact_mode,
-            restore_focus,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,4 +1,4 @@
-import type { InputConfig, AppSettings, AppState } from "@/types/settings";
+import type { InputConfig, AppState } from "@/types/settings";
 
 export const DEFAULT_CONFIG: Omit<InputConfig, "id"> = {
   name: "New Setup",
@@ -23,11 +23,6 @@ export const DEFAULT_CONFIG: Omit<InputConfig, "id"> = {
   hotkeys: { start: null, stop: null, toggle: null },
 };
 
-export const DEFAULT_APP_SETTINGS: AppSettings = {
-  alwaysOnTop: false,
-};
-
 export const DEFAULT_APP_STATE: AppState = {
   configs: [],
-  settings: DEFAULT_APP_SETTINGS,
 };
