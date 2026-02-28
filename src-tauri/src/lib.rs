@@ -559,14 +559,13 @@ fn enter_compact_mode(app: AppHandle) -> Result<(u32, u32), String> {
 }
 
 /// Restore from compact mode back to the full window.
+/// Window stays non-focusable during resize to avoid stealing focus from the game.
+/// The frontend calls `restore_focus` after a short delay to re-enable interaction.
 #[tauri::command]
 fn exit_compact_mode(app: AppHandle, width: u32, height: u32) -> Result<(), String> {
     let win = app.get_webview_window("main").ok_or("window not found")?;
 
-    // Restore decorations, resize, unpin, re-enable focus and cursor
-    win.set_ignore_cursor_events(false)
-        .map_err(|e| e.to_string())?;
-    win.set_focusable(true).map_err(|e| e.to_string())?;
+    // Restore decorations, resize, unpin — but keep non-focusable to avoid stealing focus
     win.set_decorations(true).map_err(|e| e.to_string())?;
     win.set_resizable(true).map_err(|e| e.to_string())?;
     win.set_always_on_top(false).map_err(|e| e.to_string())?;
@@ -579,6 +578,16 @@ fn exit_compact_mode(app: AppHandle, width: u32, height: u32) -> Result<(), Stri
     win.set_size(tauri::PhysicalSize::new(width, height))
         .map_err(|e| e.to_string())?;
 
+    Ok(())
+}
+
+/// Re-enable focus and cursor events after the window has finished restoring.
+#[tauri::command]
+fn restore_focus(app: AppHandle) -> Result<(), String> {
+    let win = app.get_webview_window("main").ok_or("window not found")?;
+    win.set_ignore_cursor_events(false)
+        .map_err(|e| e.to_string())?;
+    win.set_focusable(true).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -655,6 +664,7 @@ pub fn run() {
             set_always_on_top,
             enter_compact_mode,
             exit_compact_mode,
+            restore_focus,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

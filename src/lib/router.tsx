@@ -72,6 +72,8 @@ function RootLayout() {
       await invoke("exit_compact_mode", { width: w, height: h });
       savedSizeRef.current = null;
       setIsCompact(false);
+      // Re-enable focus/cursor after window has settled to avoid stealing focus
+      setTimeout(() => invoke("restore_focus").catch(() => {}), 200);
     } catch {
       // Failed to exit compact mode, ignore
     } finally {
